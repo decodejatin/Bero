@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -55,11 +56,14 @@ fun VideoBioScreen(
     var recordingTimeSeconds by remember { mutableLongStateOf(0L) }
     var recordedUri by remember { mutableStateOf<Uri?>(null) }
     
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
     // Camera controller
     val cameraController = remember {
         LifecycleCameraController(context).apply {
             setEnabledUseCases(CameraController.VIDEO_CAPTURE)
             cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+            bindToLifecycle(lifecycleOwner)
         }
     }
     

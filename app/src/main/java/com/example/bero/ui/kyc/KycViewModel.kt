@@ -2,7 +2,7 @@ package com.example.bero.ui.kyc
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bero.kyc.*
+import com.example.bero.data.kyc.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

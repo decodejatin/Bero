@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -49,9 +51,6 @@ android {
 }
 
 dependencies {
-    // Shared KMP module
-    implementation(project(":shared"))
-
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime)
@@ -72,6 +71,13 @@ dependencies {
     
     // Accompanist Permissions
     implementation(libs.accompanist.permissions)
+
+    // Material
+    implementation(libs.material)
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
+
 
     // Material
     implementation(libs.material)

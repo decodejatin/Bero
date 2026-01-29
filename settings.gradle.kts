@@ -21,4 +21,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "Bero"
 include(":app")
-include(":shared")

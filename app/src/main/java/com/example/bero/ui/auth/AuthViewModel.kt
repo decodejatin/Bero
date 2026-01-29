@@ -2,9 +2,9 @@ package com.example.bero.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bero.auth.*
-import com.bero.domain.models.KycStatus
-import com.bero.domain.models.User
+import com.example.bero.data.auth.*
+import com.example.bero.data.models.KycStatus
+import com.example.bero.data.models.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
