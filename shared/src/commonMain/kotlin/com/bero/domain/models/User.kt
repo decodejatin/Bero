@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 /**
  * User types in the Bero platform
  */
+@Serializable
 enum class UserType {
     WORKER,
     CLIENT
@@ -13,6 +14,7 @@ enum class UserType {
 /**
  * KYC verification status
  */
+@Serializable
 enum class KycStatus {
     NONE,
     PENDING,
@@ -33,3 +35,4 @@ data class User(
     val userType: UserType,
     val createdAt: Long = 0L
 )
+
