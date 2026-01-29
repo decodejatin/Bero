@@ -3,6 +3,7 @@ package com.example.bero.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bero.auth.*
+import com.bero.domain.models.KycStatus
 import com.bero.domain.models.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -136,7 +137,25 @@ class AuthViewModel : ViewModel() {
             _uiState.value = AuthUiState()
         }
     }
+
+    /**
+     * Update video bio status
+     */
+    fun updateVideoBioStatus(hasVideoBio: Boolean) {
+        viewModelScope.launch {
+            authUseCase.updateVideoBioStatus(hasVideoBio)
+        }
+    }
     
+    /**
+     * Update KYC status
+     */
+    fun updateKycStatus(status: KycStatus) {
+        viewModelScope.launch {
+            authUseCase.updateKycStatus(status)
+        }
+    }
+
     private fun getErrorMessage(error: Throwable): String {
         return when (error) {
             is AuthError.InvalidPhoneNumber -> "Please enter a valid 10-digit phone number"

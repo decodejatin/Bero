@@ -66,6 +66,12 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.activity)
     implementation(libs.compose.navigation)
+    
+    // CameraX
+    implementation(libs.bundles.camerax)
+    
+    // Accompanist Permissions
+    implementation(libs.accompanist.permissions)
 
     // Material
     implementation(libs.material)

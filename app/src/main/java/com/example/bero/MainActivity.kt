@@ -26,6 +26,10 @@ import com.bero.payment.TaxCalculator
 import com.example.bero.ui.auth.AuthViewModel
 import com.example.bero.ui.auth.LoginScreen
 import com.example.bero.ui.auth.OtpVerificationScreen
+import com.example.bero.ui.profile.VideoBioScreen
+import com.bero.domain.models.KycStatus
+import com.example.bero.ui.kyc.KycVerificationScreen
+import com.example.bero.ui.kyc.KycViewModel
 import com.example.bero.ui.theme.BeroTheme
 
 class MainActivity : ComponentActivity() {
@@ -75,17 +79,46 @@ fun BeroApp() {
         }
         // Show KYC screen for users who need KYC
         authState is AuthState.RequiresKyc -> {
-            KycPendingScreen(
-                onStartKyc = { /* TODO: Navigate to KYC flow */ },
-                onLogout = { authViewModel.logout() }
-            )
+            val kycViewModel: KycViewModel = viewModel()
+            var isVerifyingKyc by remember { mutableStateOf(false) }
+
+            if (isVerifyingKyc) {
+                KycVerificationScreen(
+                    onComplete = {
+                         authViewModel.updateKycStatus(KycStatus.VERIFIED)
+                         isVerifyingKyc = false
+                    },
+                    onBackClick = { isVerifyingKyc = false },
+                    viewModel = kycViewModel
+                )
+            } else {
+                KycPendingScreen(
+                    onStartKyc = { 
+                        kycViewModel.initSession((authState as AuthState.RequiresKyc).user.id)
+                        isVerifyingKyc = true 
+                    },
+                    onLogout = { authViewModel.logout() }
+                )
+            }
         }
         // Show video bio screen for users who need to record video
         authState is AuthState.RequiresVideoBio -> {
-            VideoBioPendingScreen(
-                onRecordVideo = { /* TODO: Navigate to video recording */ },
-                onLogout = { authViewModel.logout() }
-            )
+            var isRecordingVideo by remember { mutableStateOf(false) }
+            
+            if (isRecordingVideo) {
+                VideoBioScreen(
+                    onVideoSaved = { uri -> 
+                        isRecordingVideo = false
+                        authViewModel.updateVideoBioStatus(true) 
+                    },
+                    onBack = { isRecordingVideo = false }
+                )
+            } else {
+                VideoBioPendingScreen(
+                    onRecordVideo = { isRecordingVideo = true },
+                    onLogout = { authViewModel.logout() }
+                )
+            }
         }
         // Show main app for authenticated users
         authState is AuthState.Authenticated -> {
