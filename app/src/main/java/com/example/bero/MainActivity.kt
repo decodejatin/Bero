@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,9 @@ import com.example.bero.data.payment.TaxCalculator
 import com.example.bero.ui.auth.AuthViewModel
 import com.example.bero.ui.auth.LoginScreen
 import com.example.bero.ui.auth.OtpVerificationScreen
+import com.example.bero.ui.auth.RoleSelectionScreen
+import com.example.bero.ui.job.PostJobScreen
+import com.example.bero.data.models.UserType
 import com.example.bero.ui.profile.VideoBioScreen
 import com.example.bero.data.models.KycStatus
 import com.example.bero.ui.kyc.KycVerificationScreen
@@ -77,6 +81,12 @@ fun BeroApp() {
                 error = uiState.error
             )
         }
+        // Show role selection if needed
+        authState is AuthState.RequiresRoleSelection -> {
+            RoleSelectionScreen(
+                onRoleSelected = { role -> authViewModel.selectRole(role) }
+            )
+        }
         // Show KYC screen for users who need KYC
         authState is AuthState.RequiresKyc -> {
             val kycViewModel: KycViewModel = viewModel()
@@ -122,14 +132,21 @@ fun BeroApp() {
         }
         // Show main app for authenticated users
         authState is AuthState.Authenticated -> {
-            MainAppScreen(onLogout = { authViewModel.logout() })
+            val user = (authState as AuthState.Authenticated).user
+            MainAppScreen(
+                userType = user.userType,
+                onLogout = { authViewModel.logout() }
+            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppScreen(onLogout: () -> Unit) {
+fun MainAppScreen(
+    userType: UserType,
+    onLogout: () -> Unit
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
     
     Scaffold(
@@ -156,12 +173,23 @@ fun MainAppScreen(onLogout: () -> Unit) {
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 }
                 )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Build, contentDescription = "Jobs") },
-                    label = { Text("Jobs") },
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 }
-                )
+                
+                if (userType == UserType.WORKER) {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Build, contentDescription = "Jobs") },
+                        label = { Text("Jobs") },
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 }
+                    )
+                } else {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Add, contentDescription = "Post") },
+                        label = { Text("Post Job") },
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 }
+                    )
+                }
+                
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
                     label = { Text("Profile") },
@@ -177,9 +205,9 @@ fun MainAppScreen(onLogout: () -> Unit) {
                 .padding(innerPadding)
         ) {
             when (selectedTab) {
-                0 -> HomeScreen()
-                1 -> JobsScreen()
-                2 -> ProfileScreen(onLogout = onLogout)
+                0 -> HomeScreen(userType)
+                1 -> if (userType == UserType.WORKER) JobsScreen() else PostJobScreen()
+                2 -> ProfileScreen(userType, onLogout = onLogout)
             }
         }
     }
@@ -294,7 +322,7 @@ fun VideoBioPendingScreen(
 }
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(userType: UserType) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -321,8 +349,9 @@ fun HomeScreen() {
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                // Change message based on role
                 Text(
-                    text = "Your trusted local services marketplace",
+                    text = if (userType == UserType.WORKER) "Ready to find your next job?" else "Find the best workers for your needs",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
@@ -330,15 +359,41 @@ fun HomeScreen() {
             }
         }
         
-        // Platform Info (from shared module)
-        Text(
-            text = "Running on: ${getPlatform().name}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-        )
-        
-        // Demo: Tax Calculator from shared module
-        DemoTaxCalculatorCard()
+        if (userType == UserType.WORKER) {
+            // Platform Info (from shared module)
+            Text(
+                text = "Running on: ${getPlatform().name}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+            )
+            
+            // Demo: Tax Calculator from shared module
+            DemoTaxCalculatorCard()
+        } else {
+            // Client specific home content
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🔍", fontSize = 32.sp)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "Browse Categories",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text("Plumbers, Electricians, and more")
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -437,7 +492,7 @@ fun JobsScreen() {
 }
 
 @Composable
-fun ProfileScreen(onLogout: () -> Unit = {}) {
+fun ProfileScreen(userType: UserType, onLogout: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -454,25 +509,27 @@ fun ProfileScreen(onLogout: () -> Unit = {}) {
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Worker Profile",
+            text = if (userType == UserType.WORKER) "Worker Profile" else "Client Profile",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        // KYC Status Badge
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            )
-        ) {
-            Text(
-                text = "✅ KYC Verified",
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
+        if (userType == UserType.WORKER) {
+            // KYC Status Badge
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Text(
+                    text = "✅ KYC Verified",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
         }
         
         Spacer(modifier = Modifier.weight(1f))

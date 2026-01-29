@@ -11,6 +11,7 @@ sealed class AuthState {
     data object NotAuthenticated : AuthState()
     data class Authenticating(val phoneNumber: String) : AuthState()
     data class Authenticated(val user: User, val token: String) : AuthState()
+    data class RequiresRoleSelection(val user: User, val token: String) : AuthState()
     data class RequiresKyc(val user: User, val token: String) : AuthState()
     data class RequiresVideoBio(val user: User, val token: String) : AuthState()
 }
@@ -92,7 +93,7 @@ class AuthRepositoryImpl(
                 phoneNumber = phoneNumber,
                 fullName = null,
                 aadhaarKycStatus = KycStatus.NONE,
-                userType = UserType.WORKER
+                userType = UserType.NONE
             )
         )
     }
@@ -263,6 +264,17 @@ class AuthUseCase(
     
     suspend fun updateVideoBioStatus(hasVideoBio: Boolean) {
         sessionManager.updateVideoBioStatus(hasVideoBio)
+        sessionManager.getSession()?.let { session ->
+            _authState.value = determineAuthState(session.copy(hasVideoBio = hasVideoBio))
+        }
+    }
+    
+    suspend fun selectRole(role: UserType) {
+        sessionManager.getSession()?.let { session ->
+            val updatedSession = session.copy(userType = role)
+            sessionManager.saveSession(updatedSession)
+            _authState.value = determineAuthState(updatedSession)
+        }
     }
     
     private suspend fun determineAuthState(session: Session): AuthState {
@@ -274,8 +286,9 @@ class AuthUseCase(
         )
         
         return when {
-            session.kycStatus != KycStatus.VERIFIED -> AuthState.RequiresKyc(user, session.token)
-            !session.hasVideoBio -> AuthState.RequiresVideoBio(user, session.token)
+            session.userType == UserType.NONE -> AuthState.RequiresRoleSelection(user, session.token)
+            session.userType == UserType.WORKER && session.kycStatus != KycStatus.VERIFIED -> AuthState.RequiresKyc(user, session.token)
+            session.userType == UserType.WORKER && !session.hasVideoBio -> AuthState.RequiresVideoBio(user, session.token)
             else -> AuthState.Authenticated(user, session.token)
         }
     }

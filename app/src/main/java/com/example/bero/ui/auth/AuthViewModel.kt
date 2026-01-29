@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.bero.data.auth.*
 import com.example.bero.data.models.KycStatus
 import com.example.bero.data.models.User
+import com.example.bero.data.models.UserType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -150,9 +151,21 @@ class AuthViewModel : ViewModel() {
     /**
      * Update KYC status
      */
+    /**
+     * Update KYC status
+     */
     fun updateKycStatus(status: KycStatus) {
         viewModelScope.launch {
             authUseCase.updateKycStatus(status)
+        }
+    }
+    
+    /**
+     * Select user role (Worker/Client)
+     */
+    fun selectRole(role: UserType) {
+        viewModelScope.launch {
+            authUseCase.selectRole(role)
         }
     }
 

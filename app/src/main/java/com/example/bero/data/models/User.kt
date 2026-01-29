@@ -4,6 +4,7 @@ package com.example.bero.data.models
  * User types in the Bero platform
  */
 enum class UserType {
+    NONE, // Initial state before selection
     WORKER,
     CLIENT
 }
