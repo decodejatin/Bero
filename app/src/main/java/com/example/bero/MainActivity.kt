@@ -17,10 +17,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.bero.auth.AuthState
 import com.bero.domain.models.WorkerProfile
 import com.bero.domain.models.WorkerTier
 import com.bero.getPlatform
 import com.bero.payment.TaxCalculator
+import com.example.bero.ui.auth.AuthViewModel
+import com.example.bero.ui.auth.LoginScreen
+import com.example.bero.ui.auth.OtpVerificationScreen
 import com.example.bero.ui.theme.BeroTheme
 
 class MainActivity : ComponentActivity() {
@@ -38,6 +43,60 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BeroApp() {
+    val authViewModel: AuthViewModel = viewModel()
+    val authState by authViewModel.authState.collectAsState()
+    val uiState by authViewModel.uiState.collectAsState()
+    
+    // Route based on auth state
+    when {
+        // Show OTP screen if OTP was sent
+        uiState.otpSent && !uiState.otpVerified -> {
+            OtpVerificationScreen(
+                phoneNumber = uiState.phoneNumber ?: "",
+                onOtpSubmit = { otp -> authViewModel.verifyOtp(otp) },
+                onResendOtp = { authViewModel.resendOtp() },
+                onBackClick = { authViewModel.goBackToLogin() },
+                isLoading = uiState.isLoading,
+                error = uiState.error
+            )
+        }
+        // Show login for unauthenticated or authenticating states
+        authState is AuthState.NotAuthenticated || 
+        authState is AuthState.Authenticating -> {
+            LoginScreen(
+                onPhoneSubmit = { phone -> authViewModel.requestOtp(phone) },
+                onTruecallerClick = { 
+                    // TODO: Implement Truecaller SDK integration
+                    // For now, show a placeholder
+                },
+                isLoading = uiState.isLoading,
+                error = uiState.error
+            )
+        }
+        // Show KYC screen for users who need KYC
+        authState is AuthState.RequiresKyc -> {
+            KycPendingScreen(
+                onStartKyc = { /* TODO: Navigate to KYC flow */ },
+                onLogout = { authViewModel.logout() }
+            )
+        }
+        // Show video bio screen for users who need to record video
+        authState is AuthState.RequiresVideoBio -> {
+            VideoBioPendingScreen(
+                onRecordVideo = { /* TODO: Navigate to video recording */ },
+                onLogout = { authViewModel.logout() }
+            )
+        }
+        // Show main app for authenticated users
+        authState is AuthState.Authenticated -> {
+            MainAppScreen(onLogout = { authViewModel.logout() })
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainAppScreen(onLogout: () -> Unit) {
     var selectedTab by remember { mutableIntStateOf(0) }
     
     Scaffold(
@@ -87,8 +146,116 @@ fun BeroApp() {
             when (selectedTab) {
                 0 -> HomeScreen()
                 1 -> JobsScreen()
-                2 -> ProfileScreen()
+                2 -> ProfileScreen(onLogout = onLogout)
             }
+        }
+    }
+}
+
+@Composable
+fun KycPendingScreen(
+    onStartKyc: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "🪪",
+            fontSize = 80.sp
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "Complete KYC Verification",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "Verify your Aadhaar to start accepting jobs\nand build trust with customers",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Button(
+            onClick = onStartKyc,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+        ) {
+            Text("Start Aadhaar KYC", fontWeight = FontWeight.SemiBold)
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        TextButton(onClick = onLogout) {
+            Text("Logout")
+        }
+    }
+}
+
+@Composable
+fun VideoBioPendingScreen(
+    onRecordVideo: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "🎥",
+            fontSize = 80.sp
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "Record Your Video Bio",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "A short 15-second video helps customers\ntrust you and increases your job bookings!",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Button(
+            onClick = onRecordVideo,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+        ) {
+            Text("Record Video Bio", fontWeight = FontWeight.SemiBold)
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        TextButton(onClick = onLogout) {
+            Text("Logout")
         }
     }
 }
@@ -237,27 +404,54 @@ fun JobsScreen() {
 }
 
 @Composable
-fun ProfileScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+fun ProfileScreen(onLogout: () -> Unit = {}) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "👤",
-                fontSize = 64.sp
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        Text(
+            text = "👤",
+            fontSize = 64.sp
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Worker Profile",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // KYC Status Badge
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
             )
-            Spacer(modifier = Modifier.height(16.dp))
+        ) {
             Text(
-                text = "Profile Coming Soon",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Worker profile & KYC verification",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                text = "✅ KYC Verified",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
             )
         }
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        // Logout Button
+        OutlinedButton(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Logout")
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
