@@ -14,6 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+
+data class LanguageOption(
+    val code: String,
+    val displayName: String,
+    val nativeName: String
+)
 
 /**
  * Settings screen with app preferences
@@ -21,14 +28,21 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    onHelpClick: () -> Unit = {},
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var soundEnabled by remember { mutableStateOf(true) }
-    var darkMode by remember { mutableStateOf(false) }
-    var locationEnabled by remember { mutableStateOf(true) }
-    var selectedLanguage by remember { mutableStateOf("English") }
+    val settings by settingsViewModel.settings.collectAsState()
     var showLanguageDialog by remember { mutableStateOf(false) }
+    
+    val languages = listOf(
+        LanguageOption("en", "English", "English"),
+        LanguageOption("hi", "Hindi", "हिंदी"),
+        LanguageOption("ta", "Tamil", "தமிழ்"),
+        LanguageOption("bn", "Bengali", "বাংলা"),
+        LanguageOption("te", "Telugu", "తెలుగు")
+    )
     
     Scaffold(
         topBar = {
@@ -52,20 +66,19 @@ fun SettingsScreen(
             // Notifications Section
             item {
                 SettingsSection(title = "Notifications") {
-                    SettingsSwitchItem(
+                    SettingsClickItem(
                         icon = Icons.Default.Notifications,
-                        title = "Push Notifications",
-                        subtitle = "Receive job alerts and updates",
-                        checked = notificationsEnabled,
-                        onCheckedChange = { notificationsEnabled = it }
+                        title = "Notification Preferences",
+                        subtitle = "Manage detailed notification settings",
+                        onClick = onNotificationsClick
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsSwitchItem(
                         icon = Icons.Default.VolumeUp,
                         title = "Sound",
                         subtitle = "Play sound for notifications",
-                        checked = soundEnabled,
-                        onCheckedChange = { soundEnabled = it }
+                        checked = settings.soundEnabled,
+                        onCheckedChange = { settingsViewModel.setSoundEnabled(it) }
                     )
                 }
             }
@@ -77,14 +90,14 @@ fun SettingsScreen(
                         icon = Icons.Default.DarkMode,
                         title = "Dark Mode",
                         subtitle = "Use dark theme",
-                        checked = darkMode,
-                        onCheckedChange = { darkMode = it }
+                        checked = settings.isDarkMode,
+                        onCheckedChange = { settingsViewModel.setDarkMode(it) }
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsClickItem(
                         icon = Icons.Default.Language,
                         title = "Language",
-                        subtitle = selectedLanguage,
+                        subtitle = settingsViewModel.getLanguageDisplayName(),
                         onClick = { showLanguageDialog = true }
                     )
                 }
@@ -97,8 +110,8 @@ fun SettingsScreen(
                         icon = Icons.Default.LocationOn,
                         title = "Location Access",
                         subtitle = "Allow app to access location",
-                        checked = locationEnabled,
-                        onCheckedChange = { locationEnabled = it }
+                        checked = settings.locationEnabled,
+                        onCheckedChange = { settingsViewModel.setLocationEnabled(it) }
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsClickItem(
@@ -120,6 +133,13 @@ fun SettingsScreen(
             // About Section
             item {
                 SettingsSection(title = "About") {
+                    SettingsClickItem(
+                        icon = Icons.Default.Help,
+                        title = "Help & Support",
+                        subtitle = "FAQs and contact",
+                        onClick = onHelpClick
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsClickItem(
                         icon = Icons.Default.Info,
                         title = "App Version",
@@ -169,20 +189,22 @@ fun SettingsScreen(
             title = { Text("Select Language") },
             text = {
                 Column {
-                    listOf("English", "हिंदी (Hindi)", "தமிழ் (Tamil)", "বাংলা (Bengali)", "తెలుగు (Telugu)").forEach { language ->
+                    languages.forEach { language ->
                         ListItem(
-                            headlineContent = { Text(language) },
+                            headlineContent = { 
+                                Text("${language.nativeName} (${language.displayName})") 
+                            },
                             leadingContent = {
                                 RadioButton(
-                                    selected = selectedLanguage == language.split(" ").first(),
+                                    selected = settings.languageCode == language.code,
                                     onClick = {
-                                        selectedLanguage = language.split(" ").first()
+                                        settingsViewModel.setLanguage(language.code)
                                         showLanguageDialog = false
                                     }
                                 )
                             },
                             modifier = Modifier.clickable {
-                                selectedLanguage = language.split(" ").first()
+                                settingsViewModel.setLanguage(language.code)
                                 showLanguageDialog = false
                             }
                         )
