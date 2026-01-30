@@ -6,10 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +33,16 @@ import com.example.bero.data.models.KycStatus
 import com.example.bero.ui.kyc.KycVerificationScreen
 import com.example.bero.ui.kyc.KycViewModel
 import com.example.bero.ui.theme.BeroTheme
+// New screen imports
+import com.example.bero.ui.job.JobsScreen as EnhancedJobsScreen
+import com.example.bero.ui.wallet.WalletScreen
+import com.example.bero.ui.chat.ConversationsScreen
+import com.example.bero.ui.notifications.NotificationsScreen
+import com.example.bero.ui.categories.CategoriesScreen
+import com.example.bero.ui.bookings.BookingsScreen
+import com.example.bero.ui.profile.WorkerProfileScreen
+import com.example.bero.ui.profile.ClientProfileScreen
+import com.example.bero.ui.settings.SettingsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -148,25 +156,40 @@ fun MainAppScreen(
     onLogout: () -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showSettings by remember { mutableStateOf(false) }
+    var showWallet by remember { mutableStateOf(false) }
+    
+    // Show Settings screen overlay
+    if (showSettings) {
+        SettingsScreen(onBackClick = { showSettings = false })
+        return
+    }
+    
+    // Show Wallet screen overlay
+    if (showWallet) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Wallet", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { showWallet = false }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Box(modifier = Modifier.padding(padding)) {
+                WalletScreen()
+            }
+        }
+        return
+    }
     
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Bero",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
-        },
         bottomBar = {
             NavigationBar {
+                // Tab 0: Home
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
                     label = { Text("Home") },
@@ -174,27 +197,62 @@ fun MainAppScreen(
                     onClick = { selectedTab = 0 }
                 )
                 
+                // Tab 1: Jobs (Worker) or Categories (Client)
                 if (userType == UserType.WORKER) {
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Build, contentDescription = "Jobs") },
+                        icon = { Icon(Icons.Default.WorkOutline, contentDescription = "Jobs") },
                         label = { Text("Jobs") },
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 }
                     )
                 } else {
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Add, contentDescription = "Post") },
-                        label = { Text("Post Job") },
+                        icon = { Icon(Icons.Default.GridView, contentDescription = "Services") },
+                        label = { Text("Services") },
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 }
                     )
                 }
                 
+                // Tab 2: Chat
+                NavigationBarItem(
+                    icon = { 
+                        BadgedBox(badge = { Badge { Text("2") } }) {
+                            Icon(Icons.Default.Chat, contentDescription = "Chat")
+                        }
+                    },
+                    label = { Text("Chat") },
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 }
+                )
+                
+                // Tab 3: Notifications (Worker) or Bookings (Client)
+                if (userType == UserType.WORKER) {
+                    NavigationBarItem(
+                        icon = { 
+                            BadgedBox(badge = { Badge { Text("1") } }) {
+                                Icon(Icons.Default.Notifications, contentDescription = "Alerts")
+                            }
+                        },
+                        label = { Text("Alerts") },
+                        selected = selectedTab == 3,
+                        onClick = { selectedTab = 3 }
+                    )
+                } else {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.ListAlt, contentDescription = "Bookings") },
+                        label = { Text("Bookings") },
+                        selected = selectedTab == 3,
+                        onClick = { selectedTab = 3 }
+                    )
+                }
+                
+                // Tab 4: Profile
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
                     label = { Text("Profile") },
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 }
+                    selected = selectedTab == 4,
+                    onClick = { selectedTab = 4 }
                 )
             }
         }
@@ -206,8 +264,21 @@ fun MainAppScreen(
         ) {
             when (selectedTab) {
                 0 -> HomeScreen(userType)
-                1 -> if (userType == UserType.WORKER) JobsScreen() else PostJobScreen()
-                2 -> ProfileScreen(userType, onLogout = onLogout)
+                1 -> if (userType == UserType.WORKER) EnhancedJobsScreen() else CategoriesScreen()
+                2 -> ConversationsScreen()
+                3 -> if (userType == UserType.WORKER) NotificationsScreen() else BookingsScreen()
+                4 -> if (userType == UserType.WORKER) {
+                    WorkerProfileScreen(
+                        onLogout = onLogout,
+                        onSettingsClick = { showSettings = true },
+                        onWalletClick = { showWallet = true }
+                    )
+                } else {
+                    ClientProfileScreen(
+                        onLogout = onLogout,
+                        onSettingsClick = { showSettings = true }
+                    )
+                }
             }
         }
     }
