@@ -8,7 +8,8 @@ import kotlinx.serialization.Serializable
 enum class WorkerTier {
     BRONZE,  // Default: 15% commission
     SILVER,  // 7 day streak: 12% commission
-    GOLD     // 30 day streak: 10% commission + free accident insurance
+    GOLD,    // 30 day streak: 10% commission + free accident insurance
+    PLATINUM // 60 day streak: 8% commission + priority support
 }
 
 /**
@@ -34,6 +35,7 @@ data class WorkerProfile(
         WorkerTier.BRONZE -> 0.15
         WorkerTier.SILVER -> 0.12
         WorkerTier.GOLD -> 0.10
+        WorkerTier.PLATINUM -> 0.08
     }
 
     /**

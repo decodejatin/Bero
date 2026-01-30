@@ -402,4 +402,15 @@ object DummyDataProvider {
             rating = if (index >= 3) 4.5f else null
         )
     }
+
+    // Heper methods
+    fun getWorkers(): List<WorkerDisplayProfile> = sampleWorkers
+    
+    fun getWorkerById(id: String): WorkerDisplayProfile? = sampleWorkers.find { it.userId == id }
+    
+    fun getReviews(): List<Review> = sampleReviews
+    
+    fun getJobs(): List<Job> = sampleJobs
+    
+    fun getJobById(id: String): Job? = sampleJobs.find { it.id == id }
 }

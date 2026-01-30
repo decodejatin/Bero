@@ -184,6 +184,8 @@ data class WorkerDisplayProfile(
     val distance: Double? = null // in km
 )
 
+
+
 /**
  * Booking for client view
  */
@@ -196,3 +198,117 @@ data class Booking(
     val rating: Float? = null,
     val review: String? = null
 )
+
+/**
+ * Worker skill/service with pricing
+ */
+data class Skill(
+    val id: String = UUID.randomUUID().toString(),
+    val category: ServiceCategory,
+    val pricePerHour: Double,
+    val minimumCharge: Double,
+    val isActive: Boolean = true,
+    val isVerified: Boolean = false,
+    val experienceYears: Int = 0,
+    val description: String? = null
+)
+
+/**
+ * Payment method for clients
+ */
+data class PaymentMethod(
+    val id: String = UUID.randomUUID().toString(),
+    val type: PaymentMethodType,
+    val displayName: String,
+    val lastFourDigits: String? = null,
+    val upiId: String? = null,
+    val isDefault: Boolean = false,
+    val addedAt: Long = System.currentTimeMillis()
+)
+
+enum class PaymentMethodType {
+    UPI,
+    DEBIT_CARD,
+    CREDIT_CARD,
+    WALLET,
+    NET_BANKING
+}
+
+/**
+ * Earnings summary for analytics
+ */
+data class EarningsSummary(
+    val period: String, // "Week", "Month", "Year"
+    val totalEarnings: Double,
+    val jobsCompleted: Int,
+    val averagePerJob: Double,
+    val commissionPaid: Double,
+    val tdsPaid: Double,
+    val gstPaid: Double,
+    val netEarnings: Double,
+    val dailyEarnings: List<DailyEarning> = emptyList()
+)
+
+data class DailyEarning(
+    val date: String,
+    val amount: Double,
+    val jobCount: Int
+)
+
+/**
+ * FAQ for help screen
+ */
+data class FAQ(
+    val id: String = UUID.randomUUID().toString(),
+    val question: String,
+    val answer: String,
+    val category: FAQCategory,
+    val isPopular: Boolean = false
+)
+
+enum class FAQCategory {
+    GETTING_STARTED,
+    PAYMENTS,
+    BOOKINGS,
+    ACCOUNT,
+    SAFETY,
+    OTHER
+}
+
+/**
+ * Support ticket
+ */
+data class SupportTicket(
+    val id: String = UUID.randomUUID().toString(),
+    val subject: String,
+    val description: String,
+    val category: String,
+    val status: TicketStatus = TicketStatus.OPEN,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+enum class TicketStatus {
+    OPEN,
+    IN_PROGRESS,
+    RESOLVED,
+    CLOSED
+}
+
+/**
+ * Notification preference settings
+ */
+data class NotificationPreference(
+    val type: NotificationPreferenceType,
+    val enabled: Boolean = true,
+    val sound: Boolean = true
+)
+
+enum class NotificationPreferenceType {
+    JOB_ALERTS,
+    BOOKING_UPDATES,
+    PAYMENT_NOTIFICATIONS,
+    CHAT_MESSAGES,
+    PROMOTIONAL_OFFERS,
+    APP_UPDATES
+}
