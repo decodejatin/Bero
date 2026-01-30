@@ -1,0 +1,198 @@
+package com.example.bero.data.models
+
+import java.util.UUID
+
+/**
+ * Represents a job posting in the Bero platform
+ */
+data class Job(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val description: String,
+    val category: ServiceCategory,
+    val location: String,
+    val landmark: String? = null,
+    val amountRupees: Double,
+    val status: JobStatus = JobStatus.OPEN,
+    val clientId: String,
+    val clientName: String,
+    val clientRating: Double = 4.5,
+    val workerId: String? = null,
+    val workerName: String? = null,
+    val postedAt: Long = System.currentTimeMillis(),
+    val scheduledDate: String? = null,
+    val scheduledTime: String? = null,
+    val distance: Double = 0.0, // in km
+    val urgency: JobUrgency = JobUrgency.NORMAL
+)
+
+enum class JobStatus {
+    OPEN,
+    ACCEPTED,
+    IN_PROGRESS,
+    COMPLETED,
+    CANCELLED
+}
+
+enum class JobUrgency {
+    LOW,
+    NORMAL,
+    URGENT
+}
+
+/**
+ * Service categories available in Bero
+ */
+enum class ServiceCategory(
+    val displayName: String,
+    val emoji: String,
+    val color: Long // ARGB color
+) {
+    PLUMBER("Plumber", "🔧", 0xFF2196F3),
+    ELECTRICIAN("Electrician", "⚡", 0xFFFFC107),
+    CARPENTER("Carpenter", "🪚", 0xFF8D6E63),
+    PAINTER("Painter", "🎨", 0xFFE91E63),
+    CLEANER("Cleaner", "🧹", 0xFF4CAF50),
+    AC_REPAIR("AC Repair", "❄️", 0xFF00BCD4),
+    APPLIANCE_REPAIR("Appliance Repair", "🔌", 0xFF9C27B0),
+    PEST_CONTROL("Pest Control", "🐛", 0xFFFF5722),
+    GARDENER("Gardener", "🌱", 0xFF8BC34A),
+    DRIVER("Driver", "🚗", 0xFF607D8B),
+    COOK("Cook", "👨‍🍳", 0xFFFF9800),
+    HELPER("Helper", "🤝", 0xFF3F51B5)
+}
+
+/**
+ * Transaction in the wallet
+ */
+data class Transaction(
+    val id: String = UUID.randomUUID().toString(),
+    val type: TransactionType,
+    val amountRupees: Double,
+    val description: String,
+    val jobId: String? = null,
+    val timestamp: Long = System.currentTimeMillis(),
+    val status: TransactionStatus = TransactionStatus.COMPLETED
+)
+
+enum class TransactionType {
+    JOB_EARNING,
+    COMMISSION_DEDUCTION,
+    TDS_DEDUCTION,
+    GST_DEDUCTION,
+    WALLET_RECHARGE,
+    WITHDRAWAL,
+    BONUS,
+    STREAK_REWARD
+}
+
+enum class TransactionStatus {
+    PENDING,
+    COMPLETED,
+    FAILED
+}
+
+/**
+ * Chat message between client and worker
+ */
+data class ChatMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val senderId: String,
+    val receiverId: String,
+    val message: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isRead: Boolean = false,
+    val messageType: MessageType = MessageType.TEXT
+)
+
+enum class MessageType {
+    TEXT,
+    IMAGE,
+    LOCATION,
+    SYSTEM
+}
+
+/**
+ * Conversation summary for chat list
+ */
+data class Conversation(
+    val id: String,
+    val participantId: String,
+    val participantName: String,
+    val participantImage: String? = null,
+    val lastMessage: String,
+    val lastMessageTime: Long,
+    val unreadCount: Int = 0,
+    val jobTitle: String? = null
+)
+
+/**
+ * Notification item
+ */
+data class NotificationItem(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val message: String,
+    val type: NotificationType,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isRead: Boolean = false,
+    val actionData: String? = null // e.g., jobId for navigation
+)
+
+enum class NotificationType {
+    NEW_JOB,
+    JOB_ACCEPTED,
+    JOB_COMPLETED,
+    PAYMENT_RECEIVED,
+    STREAK_MILESTONE,
+    RATING_RECEIVED,
+    SYSTEM_UPDATE
+}
+
+/**
+ * Review/Rating given by users
+ */
+data class Review(
+    val id: String = UUID.randomUUID().toString(),
+    val jobId: String,
+    val reviewerId: String,
+    val reviewerName: String,
+    val revieweeId: String,
+    val rating: Float, // 1.0 to 5.0
+    val comment: String? = null,
+    val timestamp: Long = System.currentTimeMillis(),
+    val tags: List<String> = emptyList() // e.g., "On Time", "Professional"
+)
+
+/**
+ * Enhanced Worker Profile for display
+ */
+data class WorkerDisplayProfile(
+    val userId: String,
+    val name: String,
+    val phoneNumber: String,
+    val skills: List<ServiceCategory>,
+    val rating: Double,
+    val totalJobs: Int,
+    val isOnline: Boolean,
+    val isKycVerified: Boolean,
+    val hasVideoBio: Boolean,
+    val tier: WorkerTier,
+    val streakCount: Int,
+    val memberSince: String,
+    val location: String,
+    val distance: Double? = null // in km
+)
+
+/**
+ * Booking for client view
+ */
+data class Booking(
+    val id: String = UUID.randomUUID().toString(),
+    val job: Job,
+    val worker: WorkerDisplayProfile? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val completedAt: Long? = null,
+    val rating: Float? = null,
+    val review: String? = null
+)
