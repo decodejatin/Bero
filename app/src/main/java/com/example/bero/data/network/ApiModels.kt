@@ -1,0 +1,165 @@
+package com.example.bero.data.network
+
+import kotlinx.serialization.Serializable
+
+/**
+ * API Response wrapper models matching backend responses
+ */
+
+// Auth Responses
+@Serializable
+data class OtpRequestResponse(
+    val request_id: String,
+    val expires_in_seconds: Int
+)
+
+@Serializable
+data class AuthResponse(
+    val user: UserDto,
+    val tokens: AuthTokens,
+    val is_new: Boolean
+)
+
+@Serializable
+data class AuthTokens(
+    val access_token: String,
+    val refresh_token: String,
+    val expires_in: Long
+)
+
+@Serializable
+data class UserDto(
+    val id: String,
+    val phone_number: String,
+    val full_name: String? = null,
+    val email: String? = null,
+    val aadhaar_kyc_status: String = "NONE",
+    val user_type: String,
+    val created_at: String? = null,
+    val updated_at: String? = null
+)
+
+// Job Responses
+@Serializable
+data class JobDto(
+    val id: String,
+    val title: String,
+    val description: String,
+    val category: String,
+    val status: String = "OPEN",
+    val client_id: String,
+    val client_name: String,
+    val client_phone: String? = null,
+    val address: String,
+    val locality: String,
+    val city: String = "Delhi",
+    val pincode: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val estimated_duration_minutes: Int = 60,
+    val payment_amount_rupees: Double,
+    val scheduled_date: String,
+    val scheduled_time_slot: String,
+    val is_urgent: Boolean = false,
+    val required_skills: List<String> = emptyList(),
+    val assigned_worker_id: String? = null,
+    val created_at: String? = null,
+    val updated_at: String? = null
+)
+
+// Worker Profile Response
+@Serializable
+data class WorkerProfileDto(
+    val user_id: String,
+    val skills: List<String> = emptyList(),
+    val h3_index_res9: String? = null,
+    val is_online: Boolean = false,
+    val wallet_balance_micros: Long = 0,
+    val rating_avg: Double = 0.0,
+    val rating_count: Int = 0,
+    val streak_count: Int = 0,
+    val last_active_date: String? = null,
+    val tier: String = "BRONZE",
+    val video_bio_url: String? = null
+)
+
+// Earnings Response
+@Serializable
+data class EarningsSummaryDto(
+    val period: String,
+    val total_earnings: Double,
+    val jobs_completed: Int,
+    val average_per_job: Double,
+    val commission_paid: Double,
+    val tds_paid: Double,
+    val gst_paid: Double,
+    val net_earnings: Double,
+    val daily_earnings: List<DailyEarningDto> = emptyList()
+)
+
+@Serializable
+data class DailyEarningDto(
+    val date: String,
+    val amount: Double,
+    val job_count: Int
+)
+
+// Request Bodies
+@Serializable
+data class SendOtpRequest(
+    val phone_number: String
+)
+
+@Serializable
+data class VerifyOtpRequest(
+    val phone_number: String,
+    val otp: String,
+    val request_id: String
+)
+
+@Serializable
+data class RefreshTokenRequest(
+    val refresh_token: String
+)
+
+@Serializable
+data class CreateJobRequest(
+    val title: String,
+    val description: String,
+    val category: String,
+    val client_name: String,
+    val address: String,
+    val locality: String,
+    val city: String = "Delhi",
+    val pincode: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val estimated_duration_minutes: Int = 60,
+    val payment_amount_rupees: Double,
+    val scheduled_date: String,
+    val scheduled_time_slot: String,
+    val is_urgent: Boolean = false,
+    val required_skills: List<String> = emptyList()
+)
+
+@Serializable
+data class AcceptJobRequest(
+    val estimated_arrival_minutes: Int = 30
+)
+
+@Serializable
+data class CompleteJobRequest(
+    val worker_notes: String? = null,
+    val photo_proof_urls: List<String> = emptyList()
+)
+
+// Generic Responses
+@Serializable
+data class SuccessResponse(
+    val message: String
+)
+
+@Serializable
+data class ErrorResponse(
+    val error: String
+)
