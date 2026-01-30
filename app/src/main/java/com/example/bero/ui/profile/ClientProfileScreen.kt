@@ -26,7 +26,9 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ClientProfileScreen(
     onLogout: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onPaymentMethodsClick: () -> Unit = {},
+    onHelpClick: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -45,7 +47,11 @@ fun ClientProfileScreen(
         
         // Menu Items
         item {
-            ClientMenuSection(onSettingsClick)
+            ClientMenuSection(
+                onSettingsClick = onSettingsClick,
+                onPaymentMethodsClick = onPaymentMethodsClick,
+                onHelpClick = onHelpClick
+            )
         }
         
         // Promotions
@@ -196,7 +202,11 @@ private fun ClientStatCard(
 }
 
 @Composable
-private fun ClientMenuSection(onSettingsClick: () -> Unit) {
+private fun ClientMenuSection(
+    onSettingsClick: () -> Unit,
+    onPaymentMethodsClick: () -> Unit,
+    onHelpClick: () -> Unit
+) {
     Column(
         modifier = Modifier.padding(16.dp)
     ) {
@@ -232,14 +242,14 @@ private fun ClientMenuSection(onSettingsClick: () -> Unit) {
                 icon = Icons.Default.Payment,
                 title = "Payment Methods",
                 subtitle = "Cards and UPI",
-                onClick = { }
+                onClick = onPaymentMethodsClick
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ClientMenuItem(
                 icon = Icons.Default.Notifications,
                 title = "Notifications",
                 subtitle = "Push notification settings",
-                onClick = { }
+                onClick = onSettingsClick // Notifications are part of settings/sub-settings now
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ClientMenuItem(
@@ -253,7 +263,7 @@ private fun ClientMenuSection(onSettingsClick: () -> Unit) {
                 icon = Icons.Default.Help,
                 title = "Help & Support",
                 subtitle = "FAQs and contact",
-                onClick = { }
+                onClick = onHelpClick
             )
         }
     }

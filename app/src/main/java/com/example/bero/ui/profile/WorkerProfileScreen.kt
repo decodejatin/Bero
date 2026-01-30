@@ -36,7 +36,11 @@ import com.example.bero.data.models.*
 fun WorkerProfileScreen(
     onLogout: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
-    onWalletClick: () -> Unit = {}
+    onWalletClick: () -> Unit = {},
+    onEarningsClick: () -> Unit = {},
+    onReviewsClick: () -> Unit = {},
+    onSkillsClick: () -> Unit = {},
+    onHelpClick: () -> Unit = {}
 ) {
     val worker = remember { DummyDataProvider.sampleWorkers.first() }
     val reviews = remember { DummyDataProvider.sampleReviews.take(3) }
@@ -65,7 +69,11 @@ fun WorkerProfileScreen(
         item {
             ProfileMenuSection(
                 onWalletClick = onWalletClick,
-                onSettingsClick = onSettingsClick
+                onSettingsClick = onSettingsClick,
+                onEarningsClick = onEarningsClick,
+                onReviewsClick = onReviewsClick,
+                onSkillsClick = onSkillsClick,
+                onHelpClick = onHelpClick
             )
         }
         
@@ -91,6 +99,7 @@ private fun WorkerProfileHeader(worker: WorkerDisplayProfile) {
         WorkerTier.GOLD -> Color(0xFFFFD700)
         WorkerTier.SILVER -> Color(0xFFC0C0C0)
         WorkerTier.BRONZE -> Color(0xFFCD7F32)
+        WorkerTier.PLATINUM -> Color(0xFFE5E4E2)
     }
     
     Box(
@@ -172,6 +181,7 @@ private fun WorkerProfileHeader(worker: WorkerDisplayProfile) {
                             WorkerTier.GOLD -> "👑"
                             WorkerTier.SILVER -> "🥈"
                             WorkerTier.BRONZE -> "🥉"
+                            WorkerTier.PLATINUM -> "💎"
                         },
                         fontSize = 16.sp
                     )
@@ -410,7 +420,11 @@ private fun StatItem(
 @Composable
 private fun ProfileMenuSection(
     onWalletClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onEarningsClick: () -> Unit,
+    onReviewsClick: () -> Unit,
+    onSkillsClick: () -> Unit,
+    onHelpClick: () -> Unit
 ) {
     Column(
         modifier = Modifier.padding(16.dp)
@@ -437,17 +451,24 @@ private fun ProfileMenuSection(
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ProfileMenuItem(
-                icon = Icons.Default.WorkHistory,
-                title = "Job History",
-                subtitle = "${DummyDataProvider.totalJobsThisMonth} jobs this month",
-                onClick = { }
+                icon = Icons.Default.TrendingUp,
+                title = "Earnings Analytics",
+                subtitle = "Track your income",
+                onClick = onEarningsClick
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ProfileMenuItem(
-                icon = Icons.Default.Edit,
-                title = "Edit Profile",
-                subtitle = "Update your information",
-                onClick = { }
+                icon = Icons.Default.Build,
+                title = "My Skills",
+                subtitle = "Manage services and pricing",
+                onClick = onSkillsClick
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            ProfileMenuItem(
+                icon = Icons.Default.Star,
+                title = "My Reviews",
+                subtitle = "See what clients say",
+                onClick = onReviewsClick
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ProfileMenuItem(
@@ -461,8 +482,9 @@ private fun ProfileMenuSection(
                 icon = Icons.Default.Help,
                 title = "Help & Support",
                 subtitle = "FAQs and contact",
-                onClick = { }
+                onClick = onHelpClick
             )
+            // Removed Job History/Edit Profile placehodlers to save space/complexity for now as they weren't requested
         }
     }
 }

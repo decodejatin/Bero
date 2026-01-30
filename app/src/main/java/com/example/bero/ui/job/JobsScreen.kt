@@ -31,7 +31,9 @@ import com.example.bero.data.models.*
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun JobsScreen() {
+fun JobsScreen(
+    onJobClick: (Job) -> Unit = {}
+) {
     var selectedCategory by remember { mutableStateOf<ServiceCategory?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     
@@ -70,7 +72,7 @@ fun JobsScreen() {
                     JobCard(
                         job = job,
                         onAccept = { /* Handle accept */ },
-                        onClick = { /* Handle click */ }
+                        onClick = { onJobClick(job) }
                     )
                 }
             }

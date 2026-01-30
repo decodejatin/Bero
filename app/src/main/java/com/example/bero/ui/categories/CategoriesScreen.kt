@@ -262,6 +262,7 @@ private fun WorkerCard(
         com.example.bero.data.models.WorkerTier.GOLD -> Color(0xFFFFD700)
         com.example.bero.data.models.WorkerTier.SILVER -> Color(0xFFC0C0C0)
         com.example.bero.data.models.WorkerTier.BRONZE -> Color(0xFFCD7F32)
+        com.example.bero.data.models.WorkerTier.PLATINUM -> Color(0xFFE5E4E2)
     }
     
     Card(

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.bero.ui.bookings
 
 import androidx.compose.animation.*
