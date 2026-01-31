@@ -8,19 +8,21 @@ import (
 
 // Router sets up all API routes
 type Router struct {
-	echo        *echo.Echo
-	authHandler *AuthHandler
-	jobHandler  *JobHandler
-	authService service.AuthService
+	echo           *echo.Echo
+	authHandler    *AuthHandler
+	jobHandler     *JobHandler
+	profileHandler *ProfileHandler
+	authService    service.AuthService
 }
 
 // NewRouter creates a new router
-func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, authService service.AuthService) *Router {
+func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, authService service.AuthService) *Router {
 	return &Router{
-		echo:        echo.New(),
-		authHandler: authHandler,
-		jobHandler:  jobHandler,
-		authService: authService,
+		echo:           echo.New(),
+		authHandler:    authHandler,
+		jobHandler:     jobHandler,
+		profileHandler: profileHandler,
+		authService:    authService,
 	}
 }
 
@@ -59,6 +61,12 @@ func (r *Router) Setup() *echo.Echo {
 	protectedAuth := protected.Group("/auth")
 	protectedAuth.POST("/logout", r.authHandler.Logout)
 	protectedAuth.GET("/me", r.authHandler.Me)
+
+	// Profile routes
+	profile := protected.Group("/profile")
+	profile.GET("", r.profileHandler.GetProfile)
+	profile.PUT("", r.profileHandler.UpdateProfile)
+	profile.POST("/user-type", r.profileHandler.SetUserType)
 
 	// Job routes
 	jobs := protected.Group("/jobs")

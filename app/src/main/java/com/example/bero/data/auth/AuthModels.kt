@@ -12,6 +12,7 @@ sealed class AuthState {
     data class Authenticating(val phoneNumber: String) : AuthState()
     data class Authenticated(val user: User, val token: String) : AuthState()
     data class RequiresRoleSelection(val user: User, val token: String) : AuthState()
+    data class RequiresProfileCreation(val user: User, val token: String) : AuthState()
     data class RequiresKyc(val user: User, val token: String) : AuthState()
     data class RequiresVideoBio(val user: User, val token: String) : AuthState()
 }
@@ -25,7 +26,8 @@ data class Session(
     val token: String,
     val userType: UserType,
     val kycStatus: KycStatus = KycStatus.NONE,
-    val hasVideoBio: Boolean = false
+    val hasVideoBio: Boolean = false,
+    val isProfileComplete: Boolean = false
 )
 
 /**
@@ -59,6 +61,7 @@ interface AuthRepository {
     suspend fun refreshToken(refreshToken: String): Result<Session>
     suspend fun logout(): Result<Unit>
     suspend fun getCurrentUser(): Result<User>
+    suspend fun setUserType(userType: UserType): Result<Unit>
 }
 
 /**
@@ -114,6 +117,12 @@ class AuthRepositoryImpl : AuthRepository {
     override suspend fun getCurrentUser(): Result<User> {
         return apiClient.getCurrentUser().map { userDto ->
             mapUserDtoToUser(userDto)
+        }
+    }
+
+    override suspend fun setUserType(userType: UserType): Result<Unit> {
+        return apiClient.setUserType(userType.name).map { 
+            // Success response map to Unit
         }
     }
     
@@ -232,7 +241,8 @@ class AuthUseCase(
                     phoneNumber = user.phoneNumber,
                     token = token,
                     userType = user.userType,
-                    kycStatus = user.aadhaarKycStatus
+                    kycStatus = user.aadhaarKycStatus,
+                    isProfileComplete = !user.fullName.isNullOrBlank()
                 )
                 sessionManager.saveSession(session)
                 _authState.value = determineAuthState(session)
@@ -254,7 +264,8 @@ class AuthUseCase(
                     phoneNumber = user.phoneNumber,
                     token = authToken,
                     userType = user.userType,
-                    kycStatus = user.aadhaarKycStatus
+                    kycStatus = user.aadhaarKycStatus,
+                    isProfileComplete = !user.fullName.isNullOrBlank()
                 )
                 sessionManager.saveSession(session)
                 _authState.value = determineAuthState(session)
@@ -288,13 +299,31 @@ class AuthUseCase(
         }
     }
     
-    suspend fun selectRole(role: UserType) {
+    suspend fun selectRole(role: UserType): Result<Unit> {
+        return authRepository.setUserType(role).fold(
+            onSuccess = {
+                sessionManager.getSession()?.let { session ->
+                    val updatedSession = session.copy(userType = role)
+                    sessionManager.saveSession(updatedSession)
+                    _authState.value = determineAuthState(updatedSession)
+                }
+                Result.success(Unit)
+            },
+            onFailure = { error ->
+                Result.failure(error)
+            }
+        )
+    }
+
+    suspend fun completeProfileCreation() {
         sessionManager.getSession()?.let { session ->
-            val updatedSession = session.copy(userType = role)
+            val updatedSession = session.copy(isProfileComplete = true)
             sessionManager.saveSession(updatedSession)
             _authState.value = determineAuthState(updatedSession)
         }
     }
+
+
     
     private suspend fun determineAuthState(session: Session): AuthState {
         val user = authRepository.getCurrentUser().getOrNull() ?: User(
@@ -303,9 +332,11 @@ class AuthUseCase(
             userType = session.userType,
             aadhaarKycStatus = session.kycStatus
         )
+        // If fullName is needed for check, we might rely on session flag instead of user object if user object is constructed from session
         
         return when {
             session.userType == UserType.NONE -> AuthState.RequiresRoleSelection(user, session.token)
+            !session.isProfileComplete -> AuthState.RequiresProfileCreation(user, session.token)
             session.userType == UserType.WORKER && session.kycStatus != KycStatus.VERIFIED -> AuthState.RequiresKyc(user, session.token)
             session.userType == UserType.WORKER && !session.hasVideoBio -> AuthState.RequiresVideoBio(user, session.token)
             else -> AuthState.Authenticated(user, session.token)

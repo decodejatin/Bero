@@ -1,0 +1,120 @@
+package service
+
+import (
+	"context"
+
+	"github.com/decodejatin/bero-backend/internal/domain"
+	"github.com/decodejatin/bero-backend/internal/repository"
+)
+
+// ProfileService defines profile business logic
+type ProfileService interface {
+	GetProfile(ctx context.Context, userID string) (*ProfileResponse, error)
+	UpdateProfile(ctx context.Context, userID string, fullName string, email *string, address *string) (*ProfileResponse, error)
+	SetUserType(ctx context.Context, userID string, userType string) error
+}
+
+// ProfileResponse returned when getting profile
+type ProfileResponse struct {
+	ID          string  `json:"id"`
+	PhoneNumber string  `json:"phone_number"`
+	FullName    *string `json:"full_name,omitempty"`
+	Email       *string `json:"email,omitempty"`
+	UserType    string  `json:"user_type"`
+	Address     *string `json:"address,omitempty"`
+	KycStatus   string  `json:"kyc_status"`
+}
+
+type profileService struct {
+	userRepo repository.UserRepository
+}
+
+// NewProfileService creates a new profile service
+func NewProfileService(userRepo repository.UserRepository) ProfileService {
+	return &profileService{
+		userRepo: userRepo,
+	}
+}
+
+func (s *profileService) GetProfile(ctx context.Context, userID string) (*ProfileResponse, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Try to get client profile for address
+	var address *string
+	clientProfile, err := s.userRepo.GetClientProfile(ctx, userID)
+	if err == nil && clientProfile != nil {
+		address = clientProfile.DefaultAddress
+	}
+
+	return &ProfileResponse{
+		ID:          user.ID,
+		PhoneNumber: user.PhoneNumber,
+		FullName:    user.FullName,
+		Email:       user.Email,
+		UserType:    string(user.UserType),
+		Address:     address,
+		KycStatus:   string(user.AadhaarKycStatus),
+	}, nil
+}
+
+func (s *profileService) UpdateProfile(ctx context.Context, userID string, fullName string, email *string, address *string) (*ProfileResponse, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update user fields
+	if fullName != "" {
+		user.FullName = &fullName
+	}
+	if email != nil {
+		user.Email = email
+	}
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	// Update address in client profile if user is a client
+	if address != nil && user.UserType == domain.UserTypeClient {
+		clientProfile, err := s.userRepo.GetClientProfile(ctx, userID)
+		if err == nil && clientProfile != nil {
+			clientProfile.DefaultAddress = address
+			s.userRepo.UpdateClientProfile(ctx, clientProfile)
+		}
+	}
+
+	return s.GetProfile(ctx, userID)
+}
+
+func (s *profileService) SetUserType(ctx context.Context, userID string, userType string) error {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	user.UserType = domain.UserType(userType)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	// Create corresponding profile
+	if userType == "WORKER" {
+		workerProfile := &domain.WorkerProfile{
+			UserID: userID,
+			Skills: []string{},
+			Tier:   domain.WorkerTierBronze,
+		}
+		return s.userRepo.CreateWorkerProfile(ctx, workerProfile)
+	} else if userType == "CLIENT" {
+		clientProfile := &domain.ClientProfile{
+			UserID: userID,
+		}
+		return s.userRepo.CreateClientProfile(ctx, clientProfile)
+	}
+
+	return nil
+}

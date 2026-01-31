@@ -34,7 +34,6 @@ import com.example.bero.data.models.*
  */
 @Composable
 fun ClientHomeScreen(
-    onSearchClick: () -> Unit = {},
     onCategoryClick: (ServiceCategory) -> Unit = {},
     onWorkerClick: (String) -> Unit = {},
     onViewAllCategoriesClick: () -> Unit = {},
@@ -51,9 +50,9 @@ fun ClientHomeScreen(
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
-        // Header with Search
+        // Header with Post Job
         item {
-            ClientHeader(onSearchClick = onSearchClick)
+            ClientHeader(onPostJobClick = onPostJobClick)
         }
         
         // Quick Service Categories
@@ -105,7 +104,7 @@ fun ClientHomeScreen(
 }
 
 @Composable
-private fun ClientHeader(onSearchClick: () -> Unit) {
+private fun ClientHeader(onPostJobClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -135,11 +134,11 @@ private fun ClientHeader(onSearchClick: () -> Unit) {
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Search Bar
+            // Post a Job Banner
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onSearchClick),
+                    .clickable(onClick = onPostJobClick),
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surface
             ) {
@@ -148,15 +147,28 @@ private fun ClientHeader(onSearchClick: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        Icons.Default.Add,
+                        contentDescription = "Post Job",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Search for services...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Post a Job",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Get quotes from verified professionals",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }

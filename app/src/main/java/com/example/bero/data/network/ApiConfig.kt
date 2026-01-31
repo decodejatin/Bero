@@ -36,6 +36,10 @@ object ApiConfig {
         fun completeJob(id: String) = "/jobs/$id/complete"
         fun cancelJob(id: String) = "/jobs/$id/cancel"
         
+        // Profile
+        const val PROFILE = "/profile"
+        const val SET_USER_TYPE = "/profile/user-type"
+        
         // Workers (future)
         const val WORKERS = "/workers"
         fun workerProfile(id: String) = "/workers/$id"

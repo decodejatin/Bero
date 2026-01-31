@@ -27,13 +27,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bero.data.models.*
 
+import com.example.bero.data.network.BeroApiClient
+import com.example.bero.data.network.ProfileDto
+import kotlinx.coroutines.launch
+
 /**
  * Enhanced Profile screen for workers
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkerProfileScreen(
+    apiClient: BeroApiClient? = null,
     onLogout: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onWalletClick: () -> Unit = {},
     onEarningsClick: () -> Unit = {},
@@ -41,23 +47,36 @@ fun WorkerProfileScreen(
     onSkillsClick: () -> Unit = {},
     onHelpClick: () -> Unit = {}
 ) {
-    // TODO: Replace with API call to get worker profile
-    val worker = remember { 
+    var profileDto by remember { mutableStateOf<ProfileDto?>(null) }
+    
+    LaunchedEffect(Unit) {
+        if (apiClient != null) {
+            val result = apiClient.getProfile()
+            if (result.isSuccess) {
+                profileDto = result.getOrNull()
+            }
+        }
+    }
+
+    val worker = remember(profileDto) { 
         WorkerDisplayProfile(
-            userId = "",
-            name = "Worker",
-            phoneNumber = "",
-            rating = 0.0,
-            totalJobs = 0,
-            skills = emptyList(),
-            isOnline = false,
+            userId = profileDto?.id ?: "",
+            name = profileDto?.full_name ?: "Worker",
+            phoneNumber = profileDto?.phone_number ?: "",
+            rating = 4.8, // Placeholder
+            totalJobs = 12, // Placeholder
+            skills = listOf(
+                ServiceCategory.PLUMBING,
+                ServiceCategory.ELECTRICAL
+            ), // Placeholder
+            isOnline = true,
             tier = WorkerTier.BRONZE,
-            isKycVerified = false,
+            isKycVerified = profileDto?.kyc_status == "VERIFIED",
             hasVideoBio = false,
-            streakCount = 0,
-            distance = 0.0,
-            location = "",
-            memberSince = "New"
+            streakCount = 5,
+            distance = 2.5,
+            location = profileDto?.address ?: "Bangalore",
+            memberSince = "Jan 2024"
         )
     }
     val reviews = remember { emptyList<Review>() }
@@ -85,6 +104,7 @@ fun WorkerProfileScreen(
         // Menu Items
         item {
             ProfileMenuSection(
+                onEditProfileClick = onEditProfileClick,
                 onWalletClick = onWalletClick,
                 onSettingsClick = onSettingsClick,
                 onEarningsClick = onEarningsClick,
@@ -436,6 +456,7 @@ private fun StatItem(
 
 @Composable
 private fun ProfileMenuSection(
+    onEditProfileClick: () -> Unit,
     onWalletClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onEarningsClick: () -> Unit,
@@ -465,6 +486,13 @@ private fun ProfileMenuSection(
                 title = "Wallet",
                 subtitle = "₹0.00",
                 onClick = onWalletClick
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            ProfileMenuItem(
+                icon = Icons.Default.Person,
+                title = "Edit Profile",
+                subtitle = "Update details",
+                onClick = onEditProfileClick // Use passed callback (was missing in params list, need to add it)
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ProfileMenuItem(

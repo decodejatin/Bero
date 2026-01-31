@@ -247,7 +247,7 @@ private fun EmptyConversationsState() {
 @Composable
 fun ChatScreen(
     conversationId: String,
-    participantName: String = "Priya Gupta",
+    participantName: String,
     onBackClick: () -> Unit = {}
 ) {
     var messageText by remember { mutableStateOf("") }

@@ -44,13 +44,15 @@ func main() {
 	}
 	authService := service.NewAuthService(authRepo, userRepo, jwtCfg)
 	jobService := service.NewJobService(jobRepo)
+	profileService := service.NewProfileService(userRepo)
 
 	// Initialize handlers
 	authHandler := api.NewAuthHandler(authService)
 	jobHandler := api.NewJobHandler(jobService)
+	profileHandler := api.NewProfileHandler(profileService)
 
 	// Initialize router
-	router := api.NewRouter(authHandler, jobHandler, authService)
+	router := api.NewRouter(authHandler, jobHandler, profileHandler, authService)
 	e := router.Setup()
 
 	// Start server

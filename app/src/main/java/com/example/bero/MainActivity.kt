@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bero.data.auth.AuthState
+import com.example.bero.data.network.BeroApiClient
+import com.example.bero.data.network.TokenManager
 import com.example.bero.data.models.UserType
 import com.example.bero.data.models.KycStatus
 import com.example.bero.data.models.Job
@@ -29,6 +31,8 @@ import com.example.bero.ui.auth.AuthViewModel
 import com.example.bero.ui.auth.LoginScreen
 import com.example.bero.ui.auth.OtpVerificationScreen
 import com.example.bero.ui.auth.RoleSelectionScreen
+import com.example.bero.ui.profile.CreateProfileScreen
+import com.example.bero.ui.profile.EditProfileScreen
 import com.example.bero.ui.profile.VideoBioScreen
 import com.example.bero.ui.kyc.KycVerificationScreen
 import com.example.bero.ui.kyc.KycViewModel
@@ -86,6 +90,7 @@ sealed class Screen {
     object NotificationPreferences : Screen()
     object HelpSupport : Screen()
     object Search : Screen()
+    object EditProfile : Screen()
     
     // Worker Specific
     data class JobDetails(val job: Job) : Screen()
@@ -148,7 +153,15 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
         }
         authState is AuthState.RequiresRoleSelection -> {
             RoleSelectionScreen(
-                onRoleSelected = { role -> authViewModel.selectRole(role) }
+                onRoleSelected = { role -> authViewModel.selectRole(role) },
+                isLoading = uiState.isLoading,
+                error = uiState.error
+            )
+        }
+        authState is AuthState.RequiresProfileCreation -> {
+            CreateProfileScreen(
+                apiClient = authViewModel.apiClient,
+                onProfileCreated = { authViewModel.completeProfileCreation() }
             )
         }
         authState is AuthState.RequiresKyc -> {
@@ -197,7 +210,8 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
             MainAppScreen(
                 userType = user.userType,
                 onLogout = { authViewModel.logout() },
-                settingsViewModel = settingsViewModel
+                settingsViewModel = settingsViewModel,
+                apiClient = authViewModel.apiClient
             )
         }
     }
@@ -208,7 +222,8 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
 fun MainAppScreen(
     userType: UserType,
     onLogout: () -> Unit,
-    settingsViewModel: SettingsViewModel = viewModel()
+    settingsViewModel: SettingsViewModel = viewModel(),
+    apiClient: BeroApiClient
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Main) }
@@ -301,7 +316,6 @@ fun MainAppScreen(
                                 )
                             } else {
                                 ClientHomeScreen(
-                                    onSearchClick = { currentScreen = Screen.Search },
                                     onCategoryClick = { currentScreen = Screen.Search },
                                     onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) },
                                     onViewAllCategoriesClick = { selectedTab = 1 },
@@ -323,7 +337,9 @@ fun MainAppScreen(
                         3 -> if (userType == UserType.WORKER) NotificationsScreen() else BookingsScreen()
                         4 -> if (userType == UserType.WORKER) {
                             WorkerProfileScreen(
+                                apiClient = apiClient,
                                 onLogout = onLogout,
+                                onEditProfileClick = { currentScreen = Screen.EditProfile },
                                 onSettingsClick = { currentScreen = Screen.Settings },
                                 onWalletClick = { currentScreen = Screen.Wallet },
                                 onEarningsClick = { currentScreen = Screen.EarningsAnalytics },
@@ -333,7 +349,9 @@ fun MainAppScreen(
                             )
                         } else {
                             ClientProfileScreen(
+                                apiClient = apiClient,
                                 onLogout = onLogout,
+                                onEditProfileClick = { currentScreen = Screen.EditProfile },
                                 onSettingsClick = { currentScreen = Screen.Settings },
                                 onPaymentMethodsClick = { currentScreen = Screen.Payment },
                                 onHelpClick = { currentScreen = Screen.HelpSupport }
@@ -382,6 +400,13 @@ fun MainAppScreen(
             SearchScreen(
                 onBackClick = onBack,
                 onCategoryClick = { /* Handle category selection from search */ }
+            )
+        }
+
+        is Screen.EditProfile -> {
+            EditProfileScreen(
+                apiClient = apiClient,
+                onBackClick = onBack
             )
         }
         

@@ -160,12 +160,42 @@ class AuthViewModel : ViewModel() {
         }
     }
     
+    val apiClient: com.example.bero.data.network.BeroApiClient
+        get() = com.example.bero.di.AppContainer.instance.apiClient
+
+    /**
+     * Complete profile creation flow
+     */
+    fun completeProfileCreation() {
+        viewModelScope.launch {
+            authUseCase.completeProfileCreation()
+        }
+    }
+    
     /**
      * Select user role (Worker/Client)
      */
     fun selectRole(role: UserType) {
         viewModelScope.launch {
-            authUseCase.selectRole(role)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                error = null
+            )
+            
+            authUseCase.selectRole(role).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false
+                    )
+                    // Navigation happens automatically via authState observation
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = getErrorMessage(error)
+                    )
+                }
+            )
         }
     }
 

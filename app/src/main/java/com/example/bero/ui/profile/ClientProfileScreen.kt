@@ -22,14 +22,34 @@ import androidx.compose.ui.unit.sp
 /**
  * Profile screen for clients
  */
+import com.example.bero.data.network.BeroApiClient
+import com.example.bero.data.network.ProfileDto
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClientProfileScreen(
+    apiClient: BeroApiClient? = null,
     onLogout: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onPaymentMethodsClick: () -> Unit = {},
     onHelpClick: () -> Unit = {}
 ) {
+    val scope = rememberCoroutineScope()
+    var profile by remember { mutableStateOf<ProfileDto?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        if (apiClient != null) {
+            val result = apiClient.getProfile()
+            if (result.isSuccess) {
+                profile = result.getOrNull()
+            }
+            isLoading = false
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -37,7 +57,7 @@ fun ClientProfileScreen(
     ) {
         // Profile Header
         item {
-            ClientProfileHeader()
+            ClientProfileHeader(profile)
         }
         
         // Stats
@@ -48,6 +68,7 @@ fun ClientProfileScreen(
         // Menu Items
         item {
             ClientMenuSection(
+                onEditProfileClick = onEditProfileClick,
                 onSettingsClick = onSettingsClick,
                 onPaymentMethodsClick = onPaymentMethodsClick,
                 onHelpClick = onHelpClick
@@ -71,7 +92,7 @@ fun ClientProfileScreen(
 }
 
 @Composable
-private fun ClientProfileHeader() {
+private fun ClientProfileHeader(profile: ProfileDto?) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -97,7 +118,7 @@ private fun ClientProfileHeader() {
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = "P",
+                        text = profile?.full_name?.take(1)?.uppercase() ?: "U",
                         fontSize = 40.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -108,7 +129,7 @@ private fun ClientProfileHeader() {
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Priya Gupta",
+                text = profile?.full_name ?: "Loading...",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary
@@ -117,7 +138,7 @@ private fun ClientProfileHeader() {
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = "+91 98765 43210",
+                text = profile?.phone_number ?: "",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
             )
@@ -125,7 +146,7 @@ private fun ClientProfileHeader() {
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = "Sector 15, Noida",
+                text = profile?.address ?: "No address set",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
             )
@@ -203,6 +224,7 @@ private fun ClientStatCard(
 
 @Composable
 private fun ClientMenuSection(
+    onEditProfileClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onPaymentMethodsClick: () -> Unit,
     onHelpClick: () -> Unit
@@ -228,7 +250,7 @@ private fun ClientMenuSection(
                 icon = Icons.Default.Person,
                 title = "Edit Profile",
                 subtitle = "Update your information",
-                onClick = { }
+                onClick = onEditProfileClick
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ClientMenuItem(

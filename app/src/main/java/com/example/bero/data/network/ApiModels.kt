@@ -163,3 +163,27 @@ data class SuccessResponse(
 data class ErrorResponse(
     val error: String
 )
+
+// Profile
+@Serializable
+data class ProfileDto(
+    val id: String,
+    val phone_number: String,
+    val full_name: String? = null,
+    val email: String? = null,
+    val user_type: String,
+    val address: String? = null,
+    val kyc_status: String = "NONE"
+)
+
+@Serializable
+data class UpdateProfileRequest(
+    val full_name: String,
+    val email: String? = null,
+    val address: String? = null
+)
+
+@Serializable
+data class SetUserTypeRequest(
+    val user_type: String
+)

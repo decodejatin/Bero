@@ -331,6 +331,69 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
+    // ==================== PROFILE API ====================
+    
+    suspend fun getProfile(): Result<ProfileDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = get(ApiConfig.Endpoints.PROFILE)
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<ProfileDto>(body))
+            } else {
+                Result.failure(Exception("Failed to get profile: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateProfile(fullName: String, email: String?, address: String?): Result<ProfileDto> = withContext(Dispatchers.IO) {
+        try {
+            val request = UpdateProfileRequest(fullName, email, address)
+            val requestBody = json.encodeToString(request)
+            val response = put(ApiConfig.Endpoints.PROFILE, requestBody)
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<ProfileDto>(body))
+            } else {
+                val errorBody = response.body?.string()
+                val error = try {
+                    json.decodeFromString<ErrorResponse>(errorBody ?: "")
+                } catch (e: Exception) {
+                    ErrorResponse("Failed to update profile")
+                }
+                Result.failure(Exception(error.error))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun setUserType(userType: String): Result<SuccessResponse> = withContext(Dispatchers.IO) {
+        try {
+            val request = SetUserTypeRequest(userType)
+            val requestBody = json.encodeToString(request)
+            val response = post(ApiConfig.Endpoints.SET_USER_TYPE, requestBody)
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<SuccessResponse>(body))
+            } else {
+                val errorBody = response.body?.string()
+                val error = try {
+                    json.decodeFromString<ErrorResponse>(errorBody ?: "")
+                } catch (e: Exception) {
+                    ErrorResponse("Failed to set user type")
+                }
+                Result.failure(Exception(error.error))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     // ==================== HTTP Helpers ====================
     
     private fun get(endpoint: String): okhttp3.Response {
@@ -349,6 +412,18 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         val request = Request.Builder()
             .url(ApiConfig.baseUrl + endpoint)
             .post(requestBody)
+            .addHeader("Content-Type", "application/json")
+            .build()
+        return client.newCall(request).execute()
+    }
+    
+    private fun put(endpoint: String, body: String): okhttp3.Response {
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val requestBody = body.toRequestBody(mediaType)
+        
+        val request = Request.Builder()
+            .url(ApiConfig.baseUrl + endpoint)
+            .put(requestBody)
             .addHeader("Content-Type", "application/json")
             .build()
         return client.newCall(request).execute()

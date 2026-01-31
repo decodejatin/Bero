@@ -15,7 +15,9 @@ import com.example.bero.data.models.UserType
 
 @Composable
 fun RoleSelectionScreen(
-    onRoleSelected: (UserType) -> Unit
+    onRoleSelected: (UserType) -> Unit,
+    isLoading: Boolean = false,
+    error: String? = null
 ) {
     Column(
         modifier = Modifier
@@ -61,6 +63,22 @@ fun RoleSelectionScreen(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         )
+        
+        if (isLoading) {
+            Spacer(modifier = Modifier.height(24.dp))
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
     }
 }
 
