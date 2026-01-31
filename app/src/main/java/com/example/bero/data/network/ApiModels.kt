@@ -63,6 +63,9 @@ data class JobDto(
     val is_urgent: Boolean = false,
     val required_skills: List<String> = emptyList(),
     val assigned_worker_id: String? = null,
+    val assigned_worker_name: String? = null,
+    val assigned_worker_phone: String? = null,
+    val assigned_worker_rating: Double? = null,
     val created_at: String? = null,
     val updated_at: String? = null
 )

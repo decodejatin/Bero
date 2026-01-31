@@ -35,7 +35,8 @@ import java.util.*
 @Composable
 fun BookingsScreen(
     jobsViewModel: JobsViewModel = viewModel(),
-    onBookingClick: (Job) -> Unit = {}
+    onBookingClick: (Job) -> Unit = {},
+    onWorkerClick: (String) -> Unit = {} // Navigate to worker profile
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Active", "Completed", "Cancelled")
@@ -107,7 +108,8 @@ fun BookingsScreen(
                 items(filteredBookings) { job ->
                     BookingCard(
                         job = job,
-                        onClick = { onBookingClick(job) }
+                        onClick = { onBookingClick(job) },
+                        onWorkerClick = { workerId -> onWorkerClick(workerId) }
                     )
                 }
                 
@@ -122,7 +124,8 @@ fun BookingsScreen(
 @Composable
 private fun BookingCard(
     job: Job,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onWorkerClick: (String) -> Unit = {}
 ) {
     val statusColor = when (job.status) {
         JobStatus.OPEN -> Color(0xFF2196F3)
@@ -235,9 +238,8 @@ private fun BookingCard(
                 )
             }
             
-            // Worker info section - removed since Job doesn't have worker property
-            // Job assignment status can be shown in the status badge above
-            if (job.status in listOf(JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.COMPLETED)) {
+            // Worker info section - show worker details when job is accepted
+            if (job.status in listOf(JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.COMPLETED) && job.workerId != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -247,11 +249,53 @@ private fun BookingCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = "Status: ${job.status.name.replace("_", " ")}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
+                    // Worker info (clickable to view profile)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { job.workerId?.let { onWorkerClick(it) } }
+                    ) {
+                        // Worker avatar
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = (job.workerName?.firstOrNull()?.uppercase() ?: "W"),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = job.workerName ?: "Worker Assigned",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            if (job.workerRating != null) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Filled.Star,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = Color(0xFFFFC107)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = String.format("%.1f", job.workerRating),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     
                     // Action buttons based on status
                     when (job.status) {

@@ -21,7 +21,9 @@ object ApiMapper {
             clientName = this.client_name,
             clientRating = 4.5, // Default, would come from user endpoint
             workerId = this.assigned_worker_id,
-            workerName = null,
+            workerName = this.assigned_worker_name,
+            workerPhone = this.assigned_worker_phone,
+            workerRating = this.assigned_worker_rating,
             postedAt = System.currentTimeMillis(), // TODO: Parse created_at
             scheduledDate = this.scheduled_date,
             scheduledTime = this.scheduled_time_slot,

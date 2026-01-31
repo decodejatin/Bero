@@ -19,6 +19,8 @@ data class Job(
     val clientRating: Double = 4.5,
     val workerId: String? = null,
     val workerName: String? = null,
+    val workerPhone: String? = null,
+    val workerRating: Double? = null,
     val postedAt: Long = System.currentTimeMillis(),
     val scheduledDate: String = "", // Keep as String for display
     val scheduledTime: String? = null,

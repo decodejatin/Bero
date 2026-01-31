@@ -292,7 +292,9 @@ fun MainAppScreen(
                             )
                         }
                         2 -> ConversationsScreen()
-                        3 -> if (userType == UserType.WORKER) NotificationsScreen() else BookingsScreen()
+                        3 -> if (userType == UserType.WORKER) NotificationsScreen() else BookingsScreen(
+                            onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) }
+                        )
                         4 -> if (userType == UserType.WORKER) {
                             WorkerProfileScreen(
                                 apiClient = apiClient,

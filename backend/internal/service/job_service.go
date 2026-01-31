@@ -23,36 +23,36 @@ type JobService interface {
 	CreateJob(ctx context.Context, clientID string, req *CreateJobRequest) (*domain.Job, error)
 	GetClientJobs(ctx context.Context, clientID string, limit, offset int) ([]domain.Job, error)
 	CancelJob(ctx context.Context, clientID, jobID string) error
-	
+
 	// Worker operations
 	GetAvailableJobs(ctx context.Context, locality string, category *domain.ServiceCategory, limit, offset int) ([]domain.Job, error)
 	AcceptJob(ctx context.Context, workerID, jobID string, estimatedArrival int) error
 	StartJob(ctx context.Context, workerID, jobID string) error
 	CompleteJob(ctx context.Context, workerID, jobID string, req *CompleteJobRequest) error
 	GetWorkerJobs(ctx context.Context, workerID string, status *domain.JobStatus, limit, offset int) ([]domain.Job, error)
-	
+
 	// Common
 	GetJob(ctx context.Context, jobID string) (*domain.Job, error)
 }
 
 // CreateJobRequest for creating a new job
 type CreateJobRequest struct {
-	Title               string                `json:"title"`
-	Description         string                `json:"description"`
-	Category            domain.ServiceCategory `json:"category"`
-	ClientName          string                `json:"client_name"`
-	Address             string                `json:"address"`
-	Locality            string                `json:"locality"`
-	City                string                `json:"city"`
-	Pincode             string                `json:"pincode"`
-	Latitude            *float64              `json:"latitude,omitempty"`
-	Longitude           *float64              `json:"longitude,omitempty"`
-	EstimatedDuration   int                   `json:"estimated_duration_minutes"`
-	PaymentAmount       float64               `json:"payment_amount_rupees"`
-	ScheduledDate       time.Time             `json:"scheduled_date"`
-	ScheduledTimeSlot   string                `json:"scheduled_time_slot"`
-	IsUrgent            bool                  `json:"is_urgent"`
-	RequiredSkills      []string              `json:"required_skills"`
+	Title             string                 `json:"title"`
+	Description       string                 `json:"description"`
+	Category          domain.ServiceCategory `json:"category"`
+	ClientName        string                 `json:"client_name"`
+	Address           string                 `json:"address"`
+	Locality          string                 `json:"locality"`
+	City              string                 `json:"city"`
+	Pincode           string                 `json:"pincode"`
+	Latitude          *float64               `json:"latitude,omitempty"`
+	Longitude         *float64               `json:"longitude,omitempty"`
+	EstimatedDuration int                    `json:"estimated_duration_minutes"`
+	PaymentAmount     float64                `json:"payment_amount_rupees"`
+	ScheduledDate     time.Time              `json:"scheduled_date"`
+	ScheduledTimeSlot string                 `json:"scheduled_time_slot"`
+	IsUrgent          bool                   `json:"is_urgent"`
+	RequiredSkills    []string               `json:"required_skills"`
 }
 
 // CompleteJobRequest for completing a job
@@ -62,12 +62,34 @@ type CompleteJobRequest struct {
 }
 
 type jobService struct {
-	jobRepo repository.JobRepository
+	jobRepo  repository.JobRepository
+	userRepo repository.UserRepository
 }
 
 // NewJobService creates a new job service
-func NewJobService(jobRepo repository.JobRepository) JobService {
-	return &jobService{jobRepo: jobRepo}
+func NewJobService(jobRepo repository.JobRepository, userRepo repository.UserRepository) JobService {
+	return &jobService{jobRepo: jobRepo, userRepo: userRepo}
+}
+
+// populateWorkerDetails fills in worker information for jobs that have assigned workers
+func (s *jobService) populateWorkerDetails(ctx context.Context, jobs []domain.Job) []domain.Job {
+	for i := range jobs {
+		if jobs[i].AssignedWorkerID != nil {
+			// Get worker user info
+			worker, err := s.userRepo.GetByID(ctx, *jobs[i].AssignedWorkerID)
+			if err == nil && worker != nil {
+				jobs[i].AssignedWorkerName = worker.FullName
+				jobs[i].AssignedWorkerPhone = &worker.PhoneNumber
+			}
+
+			// Get worker profile for rating
+			workerProfile, err := s.userRepo.GetWorkerProfile(ctx, *jobs[i].AssignedWorkerID)
+			if err == nil && workerProfile != nil {
+				jobs[i].AssignedWorkerRating = &workerProfile.RatingAvg
+			}
+		}
+	}
+	return jobs
 }
 
 func (s *jobService) CreateJob(ctx context.Context, clientID string, req *CreateJobRequest) (*domain.Job, error) {
@@ -101,7 +123,12 @@ func (s *jobService) CreateJob(ctx context.Context, clientID string, req *Create
 }
 
 func (s *jobService) GetClientJobs(ctx context.Context, clientID string, limit, offset int) ([]domain.Job, error) {
-	return s.jobRepo.GetByClientID(ctx, clientID, limit, offset)
+	jobs, err := s.jobRepo.GetByClientID(ctx, clientID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	// Populate worker details for accepted jobs
+	return s.populateWorkerDetails(ctx, jobs), nil
 }
 
 func (s *jobService) CancelJob(ctx context.Context, clientID, jobID string) error {

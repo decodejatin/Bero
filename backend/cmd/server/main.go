@@ -43,7 +43,7 @@ func main() {
 		RefreshTokenTTL: 7 * 24 * time.Hour,
 	}
 	authService := service.NewAuthService(authRepo, userRepo, jwtCfg)
-	jobService := service.NewJobService(jobRepo)
+	jobService := service.NewJobService(jobRepo, userRepo)
 	profileService := service.NewProfileService(userRepo)
 
 	// Initialize handlers
