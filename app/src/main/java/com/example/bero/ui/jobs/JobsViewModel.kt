@@ -1,11 +1,13 @@
 package com.example.bero.ui.jobs
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.bero.domain.models.Job
-import com.bero.domain.models.JobStatus
-import com.bero.jobs.JobRepository
-import com.bero.jobs.JobRepositoryImpl
+import com.example.bero.data.models.Job
+import com.example.bero.data.models.JobStatus
+import com.example.bero.data.network.BeroApiClient
+import com.example.bero.data.network.TokenManager
+import com.example.bero.data.repository.JobRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,9 +16,11 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel for Jobs screens
  */
-class JobsViewModel : ViewModel() {
+class JobsViewModel(application: Application) : AndroidViewModel(application) {
     
-    private val jobRepository: JobRepository = JobRepositoryImpl()
+    private val tokenManager = TokenManager(application)
+    private val apiClient = BeroApiClient(tokenManager)
+    private val jobRepository = JobRepository(apiClient)
     
     private val _uiState = MutableStateFlow(JobsUiState())
     val uiState: StateFlow<JobsUiState> = _uiState.asStateFlow()
@@ -27,8 +31,6 @@ class JobsViewModel : ViewModel() {
     private val _myJobs = MutableStateFlow<List<Job>>(emptyList())
     val myJobs: StateFlow<List<Job>> = _myJobs.asStateFlow()
     
-    private val workerId = "worker-001" // TODO: Get from auth
-    
     init {
         loadJobs()
     }
@@ -38,7 +40,7 @@ class JobsViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             // Load available jobs
-            jobRepository.getAvailableJobs(workerId).fold(
+            jobRepository.getAvailableJobs().fold(
                 onSuccess = { jobs ->
                     _availableJobs.value = jobs
                 },
@@ -50,7 +52,7 @@ class JobsViewModel : ViewModel() {
             )
             
             // Load my jobs
-            jobRepository.getMyJobs(workerId).fold(
+            jobRepository.getMyJobs().fold(
                 onSuccess = { jobs ->
                     _myJobs.value = jobs
                 },
@@ -65,7 +67,7 @@ class JobsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAccepting = true)
             
-            jobRepository.acceptJob(jobId, workerId).fold(
+            jobRepository.acceptJob(jobId).fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(
                         isAccepting = false,
@@ -86,7 +88,7 @@ class JobsViewModel : ViewModel() {
     
     fun startJob(jobId: String) {
         viewModelScope.launch {
-            jobRepository.startJob(jobId, workerId).fold(
+            jobRepository.startJob(jobId).fold(
                 onSuccess = { loadJobs() },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(
@@ -99,7 +101,7 @@ class JobsViewModel : ViewModel() {
     
     fun completeJob(jobId: String, notes: String? = null) {
         viewModelScope.launch {
-            jobRepository.completeJob(jobId, workerId, notes).fold(
+            jobRepository.completeJob(jobId, workerNotes = notes).fold(
                 onSuccess = { 
                     _uiState.value = _uiState.value.copy(completedJobId = jobId)
                     loadJobs() 
@@ -113,9 +115,9 @@ class JobsViewModel : ViewModel() {
         }
     }
     
-    fun cancelJob(jobId: String, reason: String) {
+    fun cancelJob(jobId: String, reason: String = "Cancelled by worker") {
         viewModelScope.launch {
-            jobRepository.cancelJobAcceptance(jobId, workerId, reason).fold(
+            jobRepository.cancelJob(jobId).fold(
                 onSuccess = { loadJobs() },
                 onFailure = { error ->
                     _uiState.value = _uiState.value.copy(

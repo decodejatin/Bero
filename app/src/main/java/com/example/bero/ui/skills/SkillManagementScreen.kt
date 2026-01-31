@@ -30,6 +30,11 @@ import com.example.bero.data.models.Skill
 fun SkillManagementScreen(
     onBackClick: () -> Unit = {}
 ) {
+    // Handle system back press
+    androidx.activity.compose.BackHandler {
+        onBackClick()
+    }
+
     var skills by remember {
         mutableStateOf(
             listOf(

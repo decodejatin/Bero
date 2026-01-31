@@ -95,18 +95,16 @@ object ApiMapper {
     // Reverse mapping for creating jobs
     fun ServiceCategory.toApiCategory(): String {
         return when (this) {
-            ServiceCategory.PLUMBER -> "PLUMBING"
-            ServiceCategory.ELECTRICIAN -> "ELECTRICAL"
-            ServiceCategory.CARPENTER -> "CARPENTRY"
-            ServiceCategory.PAINTER -> "PAINTING"
-            ServiceCategory.CLEANER -> "CLEANING"
+            ServiceCategory.PLUMBER, ServiceCategory.PLUMBING -> "PLUMBING"
+            ServiceCategory.ELECTRICIAN, ServiceCategory.ELECTRICAL -> "ELECTRICAL"
+            ServiceCategory.CARPENTER, ServiceCategory.CARPENTRY -> "CARPENTRY"
+            ServiceCategory.PAINTER, ServiceCategory.PAINTING -> "PAINTING"
+            ServiceCategory.CLEANER, ServiceCategory.CLEANING -> "CLEANING"
             ServiceCategory.AC_REPAIR -> "AC_REPAIR"
             ServiceCategory.APPLIANCE_REPAIR -> "APPLIANCE_REPAIR"
             ServiceCategory.PEST_CONTROL -> "PEST_CONTROL"
-            ServiceCategory.GARDENER -> "GARDENING"
-            ServiceCategory.DRIVER -> "OTHER"
-            ServiceCategory.COOK -> "OTHER"
-            ServiceCategory.HELPER -> "OTHER"
+            ServiceCategory.GARDENER, ServiceCategory.GARDENING -> "GARDENING"
+            else -> "OTHER"
         }
     }
 }

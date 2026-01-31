@@ -15,9 +15,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.bero.domain.models.Job
-import com.bero.domain.models.JobStatus
-import com.bero.domain.models.ServiceCategory
+import com.example.bero.data.models.Job
+import com.example.bero.data.models.JobStatus
+import com.example.bero.data.models.ServiceCategory
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -442,15 +442,16 @@ private fun JobActionBar(
 
 private fun getCategoryColor(category: ServiceCategory): Color {
     return when (category) {
-        ServiceCategory.PLUMBING -> Color(0xFF2196F3)
-        ServiceCategory.ELECTRICAL -> Color(0xFFFFC107)
-        ServiceCategory.CARPENTRY -> Color(0xFF795548)
-        ServiceCategory.PAINTING -> Color(0xFF9C27B0)
-        ServiceCategory.CLEANING -> Color(0xFF00BCD4)
+        ServiceCategory.PLUMBING, ServiceCategory.PLUMBER -> Color(0xFF2196F3)
+        ServiceCategory.ELECTRICAL, ServiceCategory.ELECTRICIAN -> Color(0xFFFFC107)
+        ServiceCategory.CARPENTRY, ServiceCategory.CARPENTER -> Color(0xFF795548)
+        ServiceCategory.PAINTING, ServiceCategory.PAINTER -> Color(0xFF9C27B0)
+        ServiceCategory.CLEANING, ServiceCategory.CLEANER -> Color(0xFF00BCD4)
         ServiceCategory.AC_REPAIR -> Color(0xFF03A9F4)
         ServiceCategory.APPLIANCE_REPAIR -> Color(0xFF607D8B)
         ServiceCategory.PEST_CONTROL -> Color(0xFF4CAF50)
-        ServiceCategory.GARDENING -> Color(0xFF8BC34A)
+        ServiceCategory.GARDENING, ServiceCategory.GARDENER -> Color(0xFF8BC34A)
         ServiceCategory.OTHER -> Color(0xFF9E9E9E)
+        else -> Color(0xFF9E9E9E) // Default for any other category
     }
 }

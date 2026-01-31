@@ -64,38 +64,35 @@ interface AuthRepository {
 /**
  * Default implementation
  */
-class AuthRepositoryImpl(
-    private val baseUrl: String = "https://api.bero.app"
-) : AuthRepository {
+/**
+ * Default implementation using Real API via AppContainer
+ */
+class AuthRepositoryImpl : AuthRepository {
+    
+    // Use the real API client from AppContainer
+    private val apiClient by lazy { com.example.bero.di.AppContainer.instance.apiClient }
+    private val tokenManager by lazy { com.example.bero.di.AppContainer.instance.tokenManager }
     
     override suspend fun sendOtp(phoneNumber: String): Result<OtpRequest> {
+        // Validation handled by backend or basic check here
         if (!isValidIndianPhoneNumber(phoneNumber)) {
             return Result.failure(AuthError.InvalidPhoneNumber)
         }
         
-        return Result.success(
+        return apiClient.sendOtp(phoneNumber).map { response ->
             OtpRequest(
                 phoneNumber = phoneNumber,
-                requestId = "mock-request-${System.currentTimeMillis()}",
-                expiresInSeconds = 120
+                requestId = response.request_id,
+                expiresInSeconds = response.expires_in_seconds
             )
-        )
+        }
     }
     
     override suspend fun verifyOtp(phoneNumber: String, otp: String, requestId: String): Result<User> {
-        if (otp.length != 6 || !otp.all { it.isDigit() }) {
-            return Result.failure(AuthError.InvalidOtp)
+        return apiClient.verifyOtp(phoneNumber, otp, requestId).map { authResponse ->
+            // Map UserDto to Domain User
+            mapUserDtoToUser(authResponse.user)
         }
-        
-        return Result.success(
-            User(
-                id = "user-${phoneNumber.takeLast(4)}",
-                phoneNumber = phoneNumber,
-                fullName = null,
-                aadhaarKycStatus = KycStatus.NONE,
-                userType = UserType.NONE
-            )
-        )
     }
     
     override suspend fun authenticateWithTruecaller(truecallerToken: String): Result<User> {
@@ -103,17 +100,38 @@ class AuthRepositoryImpl(
     }
     
     override suspend fun refreshToken(refreshToken: String): Result<Session> {
-        return Result.failure(AuthError.Unknown("Token refresh not implemented"))
+         return apiClient.refreshToken().map { tokens ->
+             // We need to fetch user to create full session, likely handled by UseCase or just return minimal session
+             // For now, failure as auto-refresh happens in interceptor usually
+             throw NotImplementedError("Refresh flow handled by TokenManager")
+         }
     }
     
     override suspend fun logout(): Result<Unit> {
-        return Result.success(Unit)
+        return apiClient.logout()
     }
     
     override suspend fun getCurrentUser(): Result<User> {
-        return Result.failure(AuthError.Unknown("Not implemented"))
+        return apiClient.getCurrentUser().map { userDto ->
+            mapUserDtoToUser(userDto)
+        }
     }
     
+    private fun mapUserDtoToUser(dto: com.example.bero.data.network.UserDto): User {
+        return User(
+            id = dto.id,
+            phoneNumber = dto.phone_number,
+            fullName = dto.full_name,
+            aadhaarKycStatus = try {
+                KycStatus.valueOf(dto.aadhaar_kyc_status)
+            } catch (e: Exception) { KycStatus.NONE },
+            userType = try {
+                UserType.valueOf(dto.user_type)
+            } catch (e: Exception) { UserType.NONE },
+            createdAt = 0 // Timestamp parsing if needed
+        )
+    }
+
     private fun isValidIndianPhoneNumber(phone: String): Boolean {
         val cleaned = phone.replace(" ", "").replace("-", "")
         return when {
@@ -139,6 +157,7 @@ interface SessionManager {
 
 /**
  * In-memory session manager for testing and development
+ * Note: Now synchronized with TokenManager via AuthRepositoryImpl flow
  */
 class InMemorySessionManager : SessionManager {
     private var currentSession: Session? = null

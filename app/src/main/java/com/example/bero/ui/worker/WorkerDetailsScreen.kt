@@ -23,10 +23,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
 import com.example.bero.data.models.ServiceCategory
 import com.example.bero.data.models.WorkerDisplayProfile
 import com.example.bero.data.models.WorkerTier
+import com.example.bero.data.models.Review
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,12 +36,32 @@ fun WorkerDetailsScreen(
     onBookClick: (WorkerDisplayProfile) -> Unit = {},
     onChatClick: (String) -> Unit = {}
 ) {
-    val worker = remember {
-        workerId?.let { DummyDataProvider.getWorkerById(it) }
-            ?: DummyDataProvider.getWorkers().first()
+    // Handle system back press
+    androidx.activity.compose.BackHandler {
+        onBackClick()
     }
 
-    val reviews = remember { DummyDataProvider.getReviews().take(3) }
+    // TODO: Replace with API call to fetch worker by ID
+    val worker = remember {
+        WorkerDisplayProfile(
+            userId = workerId ?: "",
+            name = "Worker",
+            phoneNumber = "",
+            rating = 0.0,
+            totalJobs = 0,
+            skills = emptyList(),
+            isOnline = false,
+            tier = WorkerTier.BRONZE,
+            isKycVerified = false,
+            hasVideoBio = false,
+            streakCount = 0,
+            distance = 0.0,
+            location = "",
+            memberSince = "New"
+        )
+    }
+
+    val reviews = remember { emptyList<Review>() }
 
     Scaffold(
         topBar = {

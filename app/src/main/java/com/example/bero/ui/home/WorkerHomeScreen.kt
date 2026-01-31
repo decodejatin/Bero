@@ -24,23 +24,31 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bero.data.models.*
+import com.example.bero.ui.jobs.JobsViewModel
 
 /**
  * Worker Home Screen - Shows available jobs, earnings summary, and quick actions
  */
 @Composable
 fun WorkerHomeScreen(
+    jobsViewModel: JobsViewModel = viewModel(),
     onJobClick: (Job) -> Unit = {},
     onViewAllJobsClick: () -> Unit = {},
     onGoOnlineToggle: (Boolean) -> Unit = {}
 ) {
     var isOnline by remember { mutableStateOf(true) }
-    val availableJobs = remember { DummyDataProvider.getJobs().filter { it.status == JobStatus.OPEN }.take(5) }
+    val availableJobs by jobsViewModel.availableJobs.collectAsState()
+    val uiState by jobsViewModel.uiState.collectAsState()
     val todayEarnings = remember { 1250.0 }
     val weeklyEarnings = remember { 8540.0 }
     val streakCount = remember { 7 }
+    
+    // Refresh jobs when screen appears
+    LaunchedEffect(Unit) {
+        jobsViewModel.loadJobs()
+    }
     
     LazyColumn(
         modifier = Modifier
@@ -79,12 +87,23 @@ fun WorkerHomeScreen(
             )
         }
         
-        if (availableJobs.isEmpty()) {
+        val openJobs = availableJobs.filter { it.status == JobStatus.OPEN }.take(5)
+        
+        if (uiState.isLoading) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        } else if (openJobs.isEmpty()) {
             item {
                 EmptyJobsCard()
             }
         } else {
-            items(availableJobs) { job ->
+            items(openJobs) { job ->
                 JobCard(
                     job = job,
                     onClick = { onJobClick(job) }

@@ -24,26 +24,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bero.data.models.Job
 import com.example.bero.data.models.JobUrgency
-import com.example.bero.data.DummyDataProvider
+import com.example.bero.data.models.JobStatus
+import com.example.bero.ui.jobs.JobsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobDetailsScreen(
-    jobId: String? = null,
+    job: Job,
+    jobsViewModel: JobsViewModel = viewModel(),
     onBackClick: () -> Unit,
     onAcceptJob: (Job) -> Unit = {},
     onRejectJob: (Job) -> Unit = {},
     onChatClick: (String) -> Unit = {}
 ) {
-    val job = remember {
-        jobId?.let { DummyDataProvider.getJobById(it) }
-            ?: DummyDataProvider.getJobs().first()
-    }
-
+    val uiState by jobsViewModel.uiState.collectAsState()
+    
     var showAcceptDialog by remember { mutableStateOf(false) }
     var showRejectDialog by remember { mutableStateOf(false) }
+    
+    // Navigate back after successful accept
+    LaunchedEffect(uiState.acceptedJobId) {
+        if (uiState.acceptedJobId == job.id) {
+            onBackClick()
+        }
+    }
+
 
     // Accept Confirmation Dialog
     if (showAcceptDialog) {
@@ -58,7 +66,7 @@ fun JobDetailsScreen(
                 Button(
                     onClick = {
                         showAcceptDialog = false
-                        onAcceptJob(job)
+                        jobsViewModel.acceptJob(job.id)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                 ) {

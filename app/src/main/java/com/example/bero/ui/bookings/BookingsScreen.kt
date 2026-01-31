@@ -22,8 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bero.data.models.*
+import com.example.bero.ui.jobs.JobsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,20 +34,25 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingsScreen(
-    onBookingClick: (Booking) -> Unit = {}
+    jobsViewModel: JobsViewModel = viewModel(),
+    onBookingClick: (Job) -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Active", "Completed", "Cancelled")
     
-    val bookings = remember { DummyDataProvider.sampleBookings }
+    val myJobs by jobsViewModel.myJobs.collectAsState()
+    val uiState by jobsViewModel.uiState.collectAsState()
     
-    val filteredBookings = remember(selectedTab, bookings) {
-        when (selectedTab) {
-            0 -> bookings.filter { it.job.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED, JobStatus.IN_PROGRESS) }
-            1 -> bookings.filter { it.job.status == JobStatus.COMPLETED }
-            2 -> bookings.filter { it.job.status == JobStatus.CANCELLED }
-            else -> bookings
-        }
+    // Refresh jobs on screen load
+    LaunchedEffect(Unit) {
+        jobsViewModel.loadJobs()
+    }
+    
+    val filteredBookings = when (selectedTab) {
+        0 -> myJobs.filter { it.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED, JobStatus.IN_PROGRESS) }
+        1 -> myJobs.filter { it.status == JobStatus.COMPLETED }
+        2 -> myJobs.filter { it.status == JobStatus.CANCELLED }
+        else -> myJobs
     }
     
     Column(
@@ -98,10 +104,10 @@ fun BookingsScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(filteredBookings) { booking ->
+                items(filteredBookings) { job ->
                     BookingCard(
-                        booking = booking,
-                        onClick = { onBookingClick(booking) }
+                        job = job,
+                        onClick = { onBookingClick(job) }
                     )
                 }
                 
@@ -115,24 +121,25 @@ fun BookingsScreen(
 
 @Composable
 private fun BookingCard(
-    booking: Booking,
+    job: Job,
     onClick: () -> Unit
 ) {
-    val job = booking.job
     val statusColor = when (job.status) {
         JobStatus.OPEN -> Color(0xFF2196F3)
-        JobStatus.ACCEPTED -> Color(0xFF9C27B0)
+        JobStatus.ACCEPTED, JobStatus.ASSIGNED -> Color(0xFF9C27B0)
         JobStatus.IN_PROGRESS -> Color(0xFFFF9800)
         JobStatus.COMPLETED -> Color(0xFF4CAF50)
         JobStatus.CANCELLED -> Color(0xFF757575)
+        else -> Color(0xFF757575)
     }
     
     val statusText = when (job.status) {
         JobStatus.OPEN -> "Finding Worker"
-        JobStatus.ACCEPTED -> "Worker Assigned"
+        JobStatus.ACCEPTED, JobStatus.ASSIGNED -> "Worker Assigned"
         JobStatus.IN_PROGRESS -> "In Progress"
         JobStatus.COMPLETED -> "Completed"
         JobStatus.CANCELLED -> "Cancelled"
+        else -> "Unknown"
     }
     
     Card(
@@ -228,64 +235,23 @@ private fun BookingCard(
                 )
             }
             
-            // Worker info if assigned
-            booking.worker?.let { worker ->
+            // Worker info section - removed since Job doesn't have worker property
+            // Job assignment status can be shown in the status badge above
+            if (job.status in listOf(JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.COMPLETED)) {
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Surface(
-                        modifier = Modifier.size(40.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = worker.name.first().toString(),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = worker.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            if (worker.isKycVerified) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    Icons.Default.Verified,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = Color(0xFF2196F3)
-                                )
-                            }
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = Color(0xFFFFD700)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${worker.rating}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Status: ${job.status.name.replace("_", " ")}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
                     
                     // Action buttons based on status
                     when (job.status) {
@@ -296,34 +262,6 @@ private fun BookingCard(
                                 }
                                 IconButton(onClick = { }) {
                                     Icon(Icons.Default.Call, contentDescription = "Call")
-                                }
-                            }
-                        }
-                        JobStatus.COMPLETED -> {
-                            if (booking.rating == null) {
-                                OutlinedButton(
-                                    onClick = { },
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Star,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Rate")
-                                }
-                            } else {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    repeat(5) { index ->
-                                        Icon(
-                                            if (index < booking.rating!!.toInt()) Icons.Default.Star
-                                            else Icons.Outlined.Star,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp),
-                                            tint = Color(0xFFFFD700)
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -355,7 +293,7 @@ private fun BookingCard(
                 
                 Text(
                     text = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                        .format(Date(booking.createdAt)),
+                        .format(Date(job.postedAt)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )

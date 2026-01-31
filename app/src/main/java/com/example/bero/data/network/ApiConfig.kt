@@ -5,8 +5,9 @@ package com.example.bero.data.network
  */
 object ApiConfig {
     // Development - use your local IP when testing on physical device
-    // For emulator, use 10.0.2.2 instead of localhost
-    const val DEV_BASE_URL = "http://10.0.2.2:8080/api/v1"
+    // For emulator, use 10.0.2.2. For physical device on hotspot, use 192.168.137.1
+    // const val DEV_BASE_URL = "http://10.0.2.2:8080/api/v1"
+    const val DEV_BASE_URL = "http://192.168.137.1:8080/api/v1"
     
     // Production
     const val PROD_BASE_URL = "https://api.bero.app/api/v1"

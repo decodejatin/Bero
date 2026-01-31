@@ -177,7 +177,20 @@ class AuthViewModel : ViewModel() {
             is AuthError.NetworkError -> "Network error. Please check your connection."
             is AuthError.UserBlocked -> "Your account has been blocked. Contact support."
             is AuthError.Unknown -> error.message ?: "An error occurred"
-            else -> "An unexpected error occurred"
+            is java.net.SocketTimeoutException -> "Connection timed out. Please check if server is running."
+            is java.net.ConnectException -> "Cannot connect to server. Please check your connection."
+            is java.net.UnknownHostException -> "Cannot reach server. Please check your internet."
+            else -> {
+                // Show actual error message for debugging
+                val message = error.message ?: "Unknown error"
+                when {
+                    message.contains("failed to send OTP", ignoreCase = true) -> 
+                        "Server error: Unable to send OTP. Please try again."
+                    message.contains("failed", ignoreCase = true) ->
+                        "Server error: $message"
+                    else -> "Error: $message"
+                }
+            }
         }
     }
 }

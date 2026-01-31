@@ -63,8 +63,6 @@ func main() {
 }
 
 func getEnvOrDefault(key, defaultVal string) string {
-	if val := config.LoadConfig(); val != nil {
-		// Use config package for consistency
-	}
+	_ = key // TODO: Use os.Getenv(key) when integrating real env vars
 	return defaultVal
 }

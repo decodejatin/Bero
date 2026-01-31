@@ -27,8 +27,13 @@ fun SearchScreen(
     onBackClick: () -> Unit = {},
     onCategoryClick: (ServiceCategory) -> Unit = {}
 ) {
+    // Handle system back press
+    androidx.activity.compose.BackHandler {
+        onBackClick()
+    }
+
     var query by remember { mutableStateOf("") }
-    var active by remember { mutableStateOf(false) }
+    var active by remember { mutableStateOf(true) }
 
     val history = remember { mutableStateListOf("Plumber", "AC Repair", "Cleaner in Indiranagar") }
     val categories = ServiceCategory.entries
@@ -44,8 +49,11 @@ fun SearchScreen(
                     }
                     active = false 
                 },
-                active = true, // Force active for full screen search feel
-                onActiveChange = { },
+                active = active, // Force active for full screen search feel
+                onActiveChange = { 
+                    active = it
+                    if (!it) onBackClick()
+                },
                 placeholder = { Text("Search services...") },
                 leadingIcon = {
                     if (active) {

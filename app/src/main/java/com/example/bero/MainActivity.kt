@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -58,6 +59,7 @@ import com.example.bero.ui.rating.RatingFlowScreen
 import com.example.bero.ui.settings.SettingsViewModel
 import com.example.bero.ui.home.WorkerHomeScreen
 import com.example.bero.ui.home.ClientHomeScreen
+import com.example.bero.ui.job.CreateJobScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,6 +98,7 @@ sealed class Screen {
     data class BookingFlow(val worker: WorkerDisplayProfile) : Screen()
     object Payment : Screen()
     data class RatingFlow(val worker: WorkerDisplayProfile) : Screen()
+    object CreateJob : Screen()
 }
 
 @Composable
@@ -212,6 +215,12 @@ fun MainAppScreen(
     
     // Helper to handle back press or back navigation
     val onBack = { currentScreen = Screen.Main }
+    
+    // Handle system back press on main tabs
+    // If on a tab other than Home (0), go back to Home
+    BackHandler(enabled = currentScreen is Screen.Main && selectedTab != 0) {
+        selectedTab = 0
+    }
 
     // Navigation Stack Logic
     when (val screen = currentScreen) {
@@ -295,7 +304,8 @@ fun MainAppScreen(
                                     onSearchClick = { currentScreen = Screen.Search },
                                     onCategoryClick = { currentScreen = Screen.Search },
                                     onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) },
-                                    onViewAllCategoriesClick = { selectedTab = 1 }
+                                    onViewAllCategoriesClick = { selectedTab = 1 },
+                                    onPostJobClick = { currentScreen = Screen.CreateJob }
                                 )
                             }
                         }
@@ -337,13 +347,8 @@ fun MainAppScreen(
         // Full Screen Overlays
         is Screen.JobDetails -> {
            JobDetailsScreen(
-               jobId = screen.job.id,
+               job = screen.job,
                onBackClick = onBack,
-               onAcceptJob = { 
-                   // Logic to accept, then go back
-                   onBack() 
-               },
-               onRejectJob = { _ -> onBack() },
                onChatClick = { /* Go to Chat */ }
            )
         }
@@ -412,6 +417,16 @@ fun MainAppScreen(
                 onBackClick = { currentScreen = Screen.WorkerDetails(screen.worker.userId) },
                 onBookingComplete = { 
                     // Go to rating or home
+                    onBack()
+                }
+            )
+        }
+        
+        is Screen.CreateJob -> {
+            CreateJobScreen(
+                onBackClick = onBack,
+                onJobCreated = {
+                    // Navigate back to home after job is created
                     onBack()
                 }
             )

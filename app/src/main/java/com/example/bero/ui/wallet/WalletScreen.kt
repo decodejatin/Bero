@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
 import com.example.bero.data.models.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -76,7 +75,9 @@ fun WalletScreen() {
         }
         
         // Transactions
-        items(DummyDataProvider.sampleTransactions) { transaction ->
+        // TODO: Replace with API call
+        val transactions = emptyList<Transaction>()
+        items(transactions) { transaction ->
             TransactionItem(transaction)
         }
         
@@ -125,7 +126,7 @@ private fun BalanceCard() {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "₹${String.format("%,.2f", DummyDataProvider.currentWalletBalance)}",
+                            text = "₹0.00",
                             style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -172,7 +173,7 @@ private fun BalanceCard() {
                         )
                     }
                     Text(
-                        text = "₹${String.format("%,.2f", DummyDataProvider.pendingBalance)}",
+                        text = "₹0.00",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
@@ -260,14 +261,14 @@ private fun StatsRow() {
     ) {
         StatCard(
             title = "This Month",
-            value = "₹${String.format("%,.0f", DummyDataProvider.totalEarningsThisMonth)}",
+            value = "₹0",
             icon = Icons.Default.TrendingUp,
             trendUp = true,
             modifier = Modifier.weight(1f)
         )
         StatCard(
             title = "Jobs Done",
-            value = "${DummyDataProvider.totalJobsThisMonth}",
+            value = "0",
             icon = Icons.Default.CheckCircle,
             modifier = Modifier.weight(1f)
         )

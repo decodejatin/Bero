@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
 import com.example.bero.data.models.Review
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,7 +31,8 @@ fun ReviewsManagementScreen(
 ) {
     var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "5★", "4★", "3★", "2★", "1★")
-    val reviews = remember { DummyDataProvider.getReviews() }
+    // TODO: Replace with API call
+    val reviews = remember { emptyList<Review>() }
 
     val filteredReviews = remember(selectedFilter, reviews) {
         when (selectedFilter) {

@@ -27,7 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
 import com.example.bero.data.models.*
 
 /**
@@ -38,22 +37,20 @@ fun ClientHomeScreen(
     onSearchClick: () -> Unit = {},
     onCategoryClick: (ServiceCategory) -> Unit = {},
     onWorkerClick: (String) -> Unit = {},
-    onViewAllCategoriesClick: () -> Unit = {}
+    onViewAllCategoriesClick: () -> Unit = {},
+    onPostJobClick: () -> Unit = {}
 ) {
-    val featuredWorkers = remember { DummyDataProvider.getWorkers().take(5) }
-    val recentBookings = remember { 
-        listOf(
-            Pair("Plumbing Repair", "Completed • Jan 28"),
-            Pair("AC Service", "In Progress • Jan 29")
-        )
-    }
+    // TODO: Replace with API call to fetch featured workers
+    val featuredWorkers = remember { emptyList<WorkerDisplayProfile>() }
+    val recentBookings = remember { emptyList<Pair<String, String>>() }
     
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 100.dp)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
         // Header with Search
         item {
             ClientHeader(onSearchClick = onSearchClick)
@@ -88,6 +85,21 @@ fun ClientHomeScreen(
         // How it Works
         item {
             HowItWorksSection()
+        }
+        }
+        
+        // Floating Action Button for posting a job
+        ExtendedFloatingActionButton(
+            onClick = onPostJobClick,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Post Job", fontWeight = FontWeight.Bold)
         }
     }
 }

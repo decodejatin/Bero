@@ -43,7 +43,7 @@ type AuthService interface {
 
 // OtpResponse returned when OTP is sent
 type OtpResponse struct {
-	RequestID       string `json:"request_id"`
+	RequestID        string `json:"request_id"`
 	ExpiresInSeconds int    `json:"expires_in_seconds"`
 }
 
@@ -123,6 +123,44 @@ func (s *authService) SendOtp(ctx context.Context, phoneNumber string) (*OtpResp
 func (s *authService) VerifyOtp(ctx context.Context, phoneNumber, otp, requestID string) (*AuthResponse, error) {
 	normalizedPhone := normalizePhone(phoneNumber)
 
+	// ==========================================
+	// DEVELOPMENT BACKDOOR / BYPASS
+	// ==========================================
+	// If OTP is "000000", bypass all checks and allow login
+	if otp == "000000" {
+		// Get or create user directly
+		user, isNew, err := s.getOrCreateUser(ctx, normalizedPhone)
+		if err != nil {
+			return nil, fmt.Errorf("bypass failed to get/create user: %w", err)
+		}
+
+		// Generate tokens
+		tokens, err := s.generateTokens(user)
+		if err != nil {
+			return nil, fmt.Errorf("bypass failed to generate tokens: %w", err)
+		}
+
+		// Save session
+		session := &domain.Session{
+			ID:           uuid.New().String(),
+			UserID:       user.ID,
+			RefreshToken: hashString(tokens.RefreshToken),
+			ExpiresAt:    time.Now().Add(s.jwtCfg.RefreshTokenTTL),
+		}
+		if err := s.authRepo.CreateSession(ctx, session); err != nil {
+			return nil, fmt.Errorf("bypass failed to create session: %w", err)
+		}
+
+		return &AuthResponse{
+			User:   user,
+			Tokens: tokens,
+			IsNew:  isNew,
+		}, nil
+	}
+	// ==========================================
+	// END BACKDOOR
+	// ==========================================
+
 	// Get OTP request
 	otpReq, err := s.authRepo.GetOtpRequest(ctx, requestID)
 	if err != nil {
@@ -187,7 +225,7 @@ func (s *authService) VerifyOtp(ctx context.Context, phoneNumber, otp, requestID
 
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*domain.AuthTokens, error) {
 	tokenHash := hashString(refreshToken)
-	
+
 	session, err := s.authRepo.GetSessionByRefreshToken(ctx, tokenHash)
 	if err != nil {
 		return nil, ErrUnauthorized
@@ -252,10 +290,10 @@ func (s *authService) getOrCreateUser(ctx context.Context, phone string) (*domai
 
 	// Create new user
 	newUser := &domain.User{
-		ID:              uuid.New().String(),
-		PhoneNumber:     phone,
+		ID:               uuid.New().String(),
+		PhoneNumber:      phone,
 		AadhaarKycStatus: domain.KycStatusNone,
-		UserType:        domain.UserTypeWorker, // Default to worker, can be changed
+		UserType:         domain.UserTypeNone, // Default to NONE to force role selection
 	}
 
 	if err := s.userRepo.Create(ctx, newUser); err != nil {
@@ -268,7 +306,7 @@ func (s *authService) getOrCreateUser(ctx context.Context, phone string) (*domai
 func (s *authService) generateTokens(user *domain.User) (*domain.AuthTokens, error) {
 	now := time.Now()
 	accessExpiry := now.Add(s.jwtCfg.AccessTokenTTL)
-	refreshExpiry := now.Add(s.jwtCfg.RefreshTokenTTL)
+	_ = now.Add(s.jwtCfg.RefreshTokenTTL) // refreshExpiry calculated but refresh tokens use random bytes
 
 	// Access token
 	accessClaims := &Claims{
@@ -306,9 +344,9 @@ func (s *authService) generateTokens(user *domain.User) (*domain.AuthTokens, err
 func isValidIndianPhone(phone string) bool {
 	cleaned := regexp.MustCompile(`[\s\-]`).ReplaceAllString(phone, "")
 	patterns := []string{
-		`^\+91\d{10}$`,  // +91XXXXXXXXXX
-		`^91\d{10}$`,    // 91XXXXXXXXXX
-		`^\d{10}$`,      // XXXXXXXXXX
+		`^\+91\d{10}$`, // +91XXXXXXXXXX
+		`^91\d{10}$`,   // 91XXXXXXXXXX
+		`^\d{10}$`,     // XXXXXXXXXX
 	}
 	for _, pattern := range patterns {
 		if matched, _ := regexp.MatchString(pattern, cleaned); matched {

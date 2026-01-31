@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
 import com.example.bero.data.models.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,10 +32,9 @@ import java.util.*
 fun NotificationsScreen(
     onNotificationClick: (NotificationItem) -> Unit = {}
 ) {
-    val notifications = remember { 
-        DummyDataProvider.sampleNotifications.sortedByDescending { it.timestamp } 
-    }
-    val unreadCount = remember { notifications.count { !it.isRead } }
+    // TODO: Replace with API call
+    val notifications = remember { emptyList<NotificationItem>() }
+    val unreadCount = remember { 0 }
     
     Column(
         modifier = Modifier

@@ -172,11 +172,8 @@ fun CategoryWorkersScreen(
     onWorkerClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {}
 ) {
-    val workers = remember {
-        com.example.bero.data.DummyDataProvider.sampleWorkers.filter { 
-            category in it.skills 
-        }
-    }
+    // TODO: Replace with API call to fetch workers by category
+    val workers = remember { emptyList<com.example.bero.data.models.WorkerDisplayProfile>() }
     
     Column(
         modifier = Modifier

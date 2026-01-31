@@ -25,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
 import com.example.bero.data.models.*
 
 /**
@@ -42,8 +41,26 @@ fun WorkerProfileScreen(
     onSkillsClick: () -> Unit = {},
     onHelpClick: () -> Unit = {}
 ) {
-    val worker = remember { DummyDataProvider.sampleWorkers.first() }
-    val reviews = remember { DummyDataProvider.sampleReviews.take(3) }
+    // TODO: Replace with API call to get worker profile
+    val worker = remember { 
+        WorkerDisplayProfile(
+            userId = "",
+            name = "Worker",
+            phoneNumber = "",
+            rating = 0.0,
+            totalJobs = 0,
+            skills = emptyList(),
+            isOnline = false,
+            tier = WorkerTier.BRONZE,
+            isKycVerified = false,
+            hasVideoBio = false,
+            streakCount = 0,
+            distance = 0.0,
+            location = "",
+            memberSince = "New"
+        )
+    }
+    val reviews = remember { emptyList<Review>() }
     
     LazyColumn(
         modifier = Modifier
@@ -284,7 +301,7 @@ private fun StreakCard(worker: WorkerDisplayProfile) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "${DummyDataProvider.currentStreak} Day Streak!",
+                            text = "0 Day Streak!",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -313,7 +330,7 @@ private fun StreakCard(worker: WorkerDisplayProfile) {
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     LinearProgressIndicator(
-                        progress = { DummyDataProvider.currentStreak / 30f },
+                        progress = { 0f },
                         modifier = Modifier
                             .fillMaxWidth(0.7f)
                             .height(8.dp)
@@ -329,7 +346,7 @@ private fun StreakCard(worker: WorkerDisplayProfile) {
                         fontSize = 32.sp
                     )
                     Text(
-                        text = "${DummyDataProvider.streakFreezeAvailable}",
+                        text = "0",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -361,7 +378,7 @@ private fun QuickStatsRow(worker: WorkerDisplayProfile) {
         )
         StatItem(
             icon = Icons.Default.TrendingUp,
-            value = "₹${String.format("%,.0f", DummyDataProvider.totalEarningsThisMonth)}",
+            value = "₹0",
             label = "This Month",
             modifier = Modifier.weight(1f)
         )
@@ -446,7 +463,7 @@ private fun ProfileMenuSection(
             ProfileMenuItem(
                 icon = Icons.Default.AccountBalanceWallet,
                 title = "Wallet",
-                subtitle = "₹${String.format("%,.2f", DummyDataProvider.currentWalletBalance)}",
+                subtitle = "₹0.00",
                 onClick = onWalletClick
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))

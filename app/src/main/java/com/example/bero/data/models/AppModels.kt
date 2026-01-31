@@ -20,18 +20,32 @@ data class Job(
     val workerId: String? = null,
     val workerName: String? = null,
     val postedAt: Long = System.currentTimeMillis(),
-    val scheduledDate: String? = null,
+    val scheduledDate: String = "", // Keep as String for display
     val scheduledTime: String? = null,
+    val scheduledTimeSlot: String = "9 AM - 12 PM",
     val distance: Double = 0.0, // in km
-    val urgency: JobUrgency = JobUrgency.NORMAL
-)
+    val urgency: JobUrgency = JobUrgency.NORMAL,
+    // Additional fields for UI
+    val address: String = "",
+    val locality: String = "",
+    val city: String = "",
+    val pincode: String = "",
+    val estimatedDurationMinutes: Int = 60,
+    val requiredSkills: List<String> = emptyList()
+) {
+    // Computed properties for compatibility
+    val paymentAmountRupees: Double get() = amountRupees
+    val isUrgent: Boolean get() = urgency == JobUrgency.URGENT
+}
 
 enum class JobStatus {
     OPEN,
     ACCEPTED,
+    ASSIGNED, // Alias for ACCEPTED in some screens
     IN_PROGRESS,
     COMPLETED,
-    CANCELLED
+    CANCELLED,
+    DISPUTED
 }
 
 enum class JobUrgency {
@@ -49,17 +63,24 @@ enum class ServiceCategory(
     val color: Long // ARGB color
 ) {
     PLUMBER("Plumber", "🔧", 0xFF2196F3),
+    PLUMBING("Plumbing", "🔧", 0xFF2196F3), // Alias
     ELECTRICIAN("Electrician", "⚡", 0xFFFFC107),
+    ELECTRICAL("Electrical", "⚡", 0xFFFFC107), // Alias
     CARPENTER("Carpenter", "🪚", 0xFF8D6E63),
+    CARPENTRY("Carpentry", "🪚", 0xFF795548), // Alias
     PAINTER("Painter", "🎨", 0xFFE91E63),
+    PAINTING("Painting", "🎨", 0xFF9C27B0), // Alias
     CLEANER("Cleaner", "🧹", 0xFF4CAF50),
+    CLEANING("Cleaning", "🧹", 0xFF00BCD4), // Alias
     AC_REPAIR("AC Repair", "❄️", 0xFF00BCD4),
     APPLIANCE_REPAIR("Appliance Repair", "🔌", 0xFF9C27B0),
     PEST_CONTROL("Pest Control", "🐛", 0xFFFF5722),
     GARDENER("Gardener", "🌱", 0xFF8BC34A),
+    GARDENING("Gardening", "🌱", 0xFF8BC34A), // Alias
     DRIVER("Driver", "🚗", 0xFF607D8B),
     COOK("Cook", "👨‍🍳", 0xFFFF9800),
-    HELPER("Helper", "🤝", 0xFF3F51B5)
+    HELPER("Helper", "🤝", 0xFF3F51B5),
+    OTHER("Other", "🔨", 0xFF9E9E9E)
 }
 
 /**

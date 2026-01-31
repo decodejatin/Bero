@@ -23,8 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bero.data.models.*
+import com.example.bero.ui.jobs.JobsViewModel
 
 /**
  * Jobs screen for workers to browse and accept available jobs
@@ -32,17 +33,25 @@ import com.example.bero.data.models.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun JobsScreen(
+    jobsViewModel: JobsViewModel = viewModel(),
     onJobClick: (Job) -> Unit = {}
 ) {
     var selectedCategory by remember { mutableStateOf<ServiceCategory?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     
-    val jobs = remember { 
-        if (selectedCategory == null) {
-            DummyDataProvider.sampleJobs
-        } else {
-            DummyDataProvider.sampleJobs.filter { it.category == selectedCategory }
-        }
+    val allJobs by jobsViewModel.availableJobs.collectAsState()
+    val uiState by jobsViewModel.uiState.collectAsState()
+    
+    // Filter jobs by category
+    val jobs = if (selectedCategory == null) {
+        allJobs.filter { it.status == JobStatus.OPEN }
+    } else {
+        allJobs.filter { it.status == JobStatus.OPEN && it.category == selectedCategory }
+    }
+    
+    // Refresh jobs on screen load
+    LaunchedEffect(Unit) {
+        jobsViewModel.loadJobs()
     }
     
     Column(
@@ -60,7 +69,14 @@ fun JobsScreen(
         )
         
         // Jobs list
-        if (jobs.isEmpty()) {
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (jobs.isEmpty()) {
             EmptyJobsState()
         } else {
             LazyColumn(
@@ -71,7 +87,7 @@ fun JobsScreen(
                 items(jobs) { job ->
                     JobCard(
                         job = job,
-                        onAccept = { /* Handle accept */ },
+                        onAccept = { jobsViewModel.acceptJob(job.id) },
                         onClick = { onJobClick(job) }
                     )
                 }
@@ -105,7 +121,7 @@ private fun EarningsSummaryCard() {
                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                 )
                 Text(
-                    text = "₹${String.format("%,.0f", DummyDataProvider.totalEarningsThisMonth / 30)}",
+                    text = "₹0",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimary
@@ -122,7 +138,7 @@ private fun EarningsSummaryCard() {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${DummyDataProvider.totalJobsThisMonth} jobs",
+                        text = "0 jobs",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                     )
@@ -137,7 +153,7 @@ private fun EarningsSummaryCard() {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${DummyDataProvider.averageRating}",
+                        text = "0.0",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                     )

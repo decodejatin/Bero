@@ -18,9 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.bero.domain.models.Job
-import com.bero.domain.models.JobStatus
-import com.bero.domain.models.ServiceCategory
+import com.example.bero.data.models.Job
+import com.example.bero.data.models.JobStatus
+import com.example.bero.data.models.ServiceCategory
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -232,9 +232,8 @@ private fun JobCard(
                 }
                 
                 // Date
-                val dateFormat = SimpleDateFormat("d MMM, h:mm a", Locale.getDefault())
                 Text(
-                    text = dateFormat.format(Date(job.scheduledDate)),
+                    text = "${job.scheduledDate}, ${job.scheduledTime ?: job.scheduledTimeSlot}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -338,30 +337,30 @@ private fun EmptyJobsState(isMyJobs: Boolean) {
 
 private fun getCategoryIcon(category: ServiceCategory): androidx.compose.ui.graphics.vector.ImageVector {
     return when (category) {
-        ServiceCategory.PLUMBING -> Icons.Default.Plumbing
-        ServiceCategory.ELECTRICAL -> Icons.Default.ElectricalServices
-        ServiceCategory.CARPENTRY -> Icons.Default.Carpenter
-        ServiceCategory.PAINTING -> Icons.Default.FormatPaint
-        ServiceCategory.CLEANING -> Icons.Default.CleaningServices
+        ServiceCategory.PLUMBING, ServiceCategory.PLUMBER -> Icons.Default.Plumbing
+        ServiceCategory.ELECTRICAL, ServiceCategory.ELECTRICIAN -> Icons.Default.ElectricalServices
+        ServiceCategory.CARPENTRY, ServiceCategory.CARPENTER -> Icons.Default.Carpenter
+        ServiceCategory.PAINTING, ServiceCategory.PAINTER -> Icons.Default.FormatPaint
+        ServiceCategory.CLEANING, ServiceCategory.CLEANER -> Icons.Default.CleaningServices
         ServiceCategory.AC_REPAIR -> Icons.Default.AcUnit
         ServiceCategory.APPLIANCE_REPAIR -> Icons.Default.Kitchen
         ServiceCategory.PEST_CONTROL -> Icons.Default.PestControl
-        ServiceCategory.GARDENING -> Icons.Default.Grass
-        ServiceCategory.OTHER -> Icons.Default.Build
+        ServiceCategory.GARDENING, ServiceCategory.GARDENER -> Icons.Default.Grass
+        else -> Icons.Default.Build
     }
 }
 
 private fun getCategoryColor(category: ServiceCategory): Color {
     return when (category) {
-        ServiceCategory.PLUMBING -> Color(0xFF2196F3)
-        ServiceCategory.ELECTRICAL -> Color(0xFFFFC107)
-        ServiceCategory.CARPENTRY -> Color(0xFF795548)
-        ServiceCategory.PAINTING -> Color(0xFF9C27B0)
-        ServiceCategory.CLEANING -> Color(0xFF00BCD4)
+        ServiceCategory.PLUMBING, ServiceCategory.PLUMBER -> Color(0xFF2196F3)
+        ServiceCategory.ELECTRICAL, ServiceCategory.ELECTRICIAN -> Color(0xFFFFC107)
+        ServiceCategory.CARPENTRY, ServiceCategory.CARPENTER -> Color(0xFF795548)
+        ServiceCategory.PAINTING, ServiceCategory.PAINTER -> Color(0xFF9C27B0)
+        ServiceCategory.CLEANING, ServiceCategory.CLEANER -> Color(0xFF00BCD4)
         ServiceCategory.AC_REPAIR -> Color(0xFF03A9F4)
         ServiceCategory.APPLIANCE_REPAIR -> Color(0xFF607D8B)
         ServiceCategory.PEST_CONTROL -> Color(0xFF4CAF50)
-        ServiceCategory.GARDENING -> Color(0xFF8BC34A)
-        ServiceCategory.OTHER -> Color(0xFF9E9E9E)
+        ServiceCategory.GARDENING, ServiceCategory.GARDENER -> Color(0xFF8BC34A)
+        else -> Color(0xFF9E9E9E)
     }
 }

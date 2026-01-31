@@ -26,7 +26,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.bero.data.DummyDataProvider
 import com.example.bero.data.models.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -38,6 +37,9 @@ import java.util.*
 fun ConversationsScreen(
     onConversationClick: (String) -> Unit = {}
 ) {
+    // TODO: Replace with API call to fetch conversations
+    val conversations = remember { emptyList<Conversation>() }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -67,14 +69,14 @@ fun ConversationsScreen(
             }
         }
         
-        if (DummyDataProvider.sampleConversations.isEmpty()) {
+        if (conversations.isEmpty()) {
             EmptyConversationsState()
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                items(DummyDataProvider.sampleConversations) { conversation ->
+                items(conversations) { conversation ->
                     ConversationItem(
                         conversation = conversation,
                         onClick = { onConversationClick(conversation.id) }
@@ -250,7 +252,8 @@ fun ChatScreen(
 ) {
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    val messages = remember { DummyDataProvider.sampleChatMessages }
+    // TODO: Replace with API call to fetch messages
+    val messages = remember { emptyList<ChatMessage>() }
     val currentUserId = "w1" // Worker's ID for this demo
     
     Column(
