@@ -332,13 +332,12 @@ class AuthUseCase(
             userType = session.userType,
             aadhaarKycStatus = session.kycStatus
         )
-        // If fullName is needed for check, we might rely on session flag instead of user object if user object is constructed from session
         
+        // Simplified flow: Role Selection -> Profile Creation -> Authenticated
+        // KYC and Video Bio are optional and can be done later from the profile screen
         return when {
             session.userType == UserType.NONE -> AuthState.RequiresRoleSelection(user, session.token)
             !session.isProfileComplete -> AuthState.RequiresProfileCreation(user, session.token)
-            session.userType == UserType.WORKER && session.kycStatus != KycStatus.VERIFIED -> AuthState.RequiresKyc(user, session.token)
-            session.userType == UserType.WORKER && !session.hasVideoBio -> AuthState.RequiresVideoBio(user, session.token)
             else -> AuthState.Authenticated(user, session.token)
         }
     }

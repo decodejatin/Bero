@@ -24,7 +24,6 @@ import com.example.bero.data.auth.AuthState
 import com.example.bero.data.network.BeroApiClient
 import com.example.bero.data.network.TokenManager
 import com.example.bero.data.models.UserType
-import com.example.bero.data.models.KycStatus
 import com.example.bero.data.models.Job
 import com.example.bero.data.models.WorkerDisplayProfile
 import com.example.bero.ui.auth.AuthViewModel
@@ -33,9 +32,7 @@ import com.example.bero.ui.auth.OtpVerificationScreen
 import com.example.bero.ui.auth.RoleSelectionScreen
 import com.example.bero.ui.profile.CreateProfileScreen
 import com.example.bero.ui.profile.EditProfileScreen
-import com.example.bero.ui.profile.VideoBioScreen
-import com.example.bero.ui.kyc.KycVerificationScreen
-import com.example.bero.ui.kyc.KycViewModel
+// KYC and Video Bio screens removed - now optional features
 import com.example.bero.ui.theme.BeroTheme
 
 // Navigation Screens
@@ -164,47 +161,8 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
                 onProfileCreated = { authViewModel.completeProfileCreation() }
             )
         }
-        authState is AuthState.RequiresKyc -> {
-            val kycViewModel: KycViewModel = viewModel()
-            var isVerifyingKyc by remember { mutableStateOf(false) }
-
-            if (isVerifyingKyc) {
-                KycVerificationScreen(
-                    onComplete = {
-                         authViewModel.updateKycStatus(KycStatus.VERIFIED)
-                         isVerifyingKyc = false
-                    },
-                    onBackClick = { isVerifyingKyc = false },
-                    viewModel = kycViewModel
-                )
-            } else {
-                KycPendingScreen(
-                    onStartKyc = { 
-                        kycViewModel.initSession((authState as AuthState.RequiresKyc).user.id)
-                        isVerifyingKyc = true 
-                    },
-                    onLogout = { authViewModel.logout() }
-                )
-            }
-        }
-        authState is AuthState.RequiresVideoBio -> {
-            var isRecordingVideo by remember { mutableStateOf(false) }
-            
-            if (isRecordingVideo) {
-                VideoBioScreen(
-                    onVideoSaved = { _ -> 
-                        isRecordingVideo = false
-                        authViewModel.updateVideoBioStatus(true) 
-                    },
-                    onBack = { isRecordingVideo = false }
-                )
-            } else {
-                VideoBioPendingScreen(
-                    onRecordVideo = { isRecordingVideo = true },
-                    onLogout = { authViewModel.logout() }
-                )
-            }
-        }
+        // KYC and Video Bio are now optional - can be done later from profile settings
+        // The RequiresKyc and RequiresVideoBio states are kept for future use if needed
         authState is AuthState.Authenticated -> {
             val user = (authState as AuthState.Authenticated).user
             MainAppScreen(
@@ -468,32 +426,3 @@ fun MainAppScreen(
     }
 }
 
-// Re-using the pending screens from before
-@Composable
-fun KycPendingScreen(onStartKyc: () -> Unit, onLogout: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("🪪", fontSize = 80.sp)
-        Spacer(Modifier.height(24.dp))
-        Text("Complete KYC Verification", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Button(onClick = onStartKyc, modifier = Modifier.fillMaxWidth().padding(top=32.dp)) { Text("Start") }
-        TextButton(onClick = onLogout) { Text("Logout") }
-    }
-}
-
-@Composable
-fun VideoBioPendingScreen(onRecordVideo: () -> Unit, onLogout: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("🎥", fontSize = 80.sp)
-        Text("Record Video Bio", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Button(onClick = onRecordVideo, modifier = Modifier.fillMaxWidth().padding(top=32.dp)) { Text("Record") }
-        TextButton(onClick = onLogout) { Text("Logout") }
-    }
-}
