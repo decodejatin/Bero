@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bero - Local Services Marketplace</title>
+    <meta name="description" content="Connect with trusted local workers for plumbing, electrical, carpentry, cleaning and more">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .hero {
+            background: white;
+            border-radius: 20px;
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .logo {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+        .tagline {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        .feature {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        .feature h3 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        .cta {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        .links {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+        }
+        .links a:hover { text-decoration: underline; }
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero">
+            <div class="logo">Bero</div>
+            <p class="tagline">Your trusted local services marketplace</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <h3>🔧 Skilled Workers</h3>
+                    <p>Find verified plumbers, electricians, carpenters & more</p>
+                </div>
+                <div class="feature">
+                    <h3>📱 Easy Booking</h3>
+                    <p>Book services in just a few taps</p>
+                </div>
+                <div class="feature">
+                    <h3>💰 Fair Prices</h3>
+                    <p>Transparent pricing with no hidden costs</p>
+                </div>
+                <div class="feature">
+                    <h3>⭐ Rated & Reviewed</h3>
+                    <p>Choose from top-rated professionals</p>
+                </div>
+            </div>
+            
+            <a href="https://play.google.com/store/apps/details?id=com.example.bero" class="cta">
+                Download App
+            </a>
+            
+            <div class="links">
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="terms.html">Terms of Service</a>
+                <a href="mailto:support@beroapp.com">Contact Us</a>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>© 2026 Bero. All rights reserved.</p>
+    </footer>
+</body>
+</html>
