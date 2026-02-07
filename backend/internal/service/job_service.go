@@ -29,6 +29,7 @@ type JobService interface {
 	AcceptJob(ctx context.Context, workerID, jobID string, estimatedArrival int) error
 	StartJob(ctx context.Context, workerID, jobID string) error
 	CompleteJob(ctx context.Context, workerID, jobID string, req *CompleteJobRequest) error
+	ConfirmCompletion(ctx context.Context, clientID, jobID string) error
 	GetWorkerJobs(ctx context.Context, workerID string, status *domain.JobStatus, limit, offset int) ([]domain.Job, error)
 
 	// Common
@@ -225,6 +226,30 @@ func (s *jobService) CompleteJob(ctx context.Context, workerID, jobID string, re
 		return err
 	}
 
+	// Worker marks complete -> AWAITING_CONFIRMATION
+	job.WorkerConfirmed = true
+	job.Status = domain.JobStatusAwaitingConfirmation
+	return s.jobRepo.Update(ctx, job)
+}
+
+func (s *jobService) ConfirmCompletion(ctx context.Context, clientID, jobID string) error {
+	job, err := s.jobRepo.GetByID(ctx, jobID)
+	if err != nil {
+		return ErrJobNotFound
+	}
+
+	// Only client who owns the job can confirm
+	if job.ClientID != clientID {
+		return ErrUnauthorizedAction
+	}
+
+	// Must be awaiting confirmation
+	if job.Status != domain.JobStatusAwaitingConfirmation {
+		return ErrInvalidStatus
+	}
+
+	// Client confirms
+	job.ClientConfirmed = true
 	job.Status = domain.JobStatusCompleted
 	return s.jobRepo.Update(ctx, job)
 }

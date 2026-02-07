@@ -6,12 +6,13 @@ import "time"
 type JobStatus string
 
 const (
-	JobStatusOpen       JobStatus = "OPEN"
-	JobStatusAssigned   JobStatus = "ASSIGNED"
-	JobStatusInProgress JobStatus = "IN_PROGRESS"
-	JobStatusCompleted  JobStatus = "COMPLETED"
-	JobStatusCancelled  JobStatus = "CANCELLED"
-	JobStatusDisputed   JobStatus = "DISPUTED"
+	JobStatusOpen                 JobStatus = "OPEN"
+	JobStatusAssigned             JobStatus = "ASSIGNED"
+	JobStatusInProgress           JobStatus = "IN_PROGRESS"
+	JobStatusAwaitingConfirmation JobStatus = "AWAITING_CONFIRMATION"
+	JobStatusCompleted            JobStatus = "COMPLETED"
+	JobStatusCancelled            JobStatus = "CANCELLED"
+	JobStatusDisputed             JobStatus = "DISPUTED"
 )
 
 // ServiceCategory represents service categories
@@ -56,6 +57,8 @@ type Job struct {
 	AssignedWorkerName    *string         `json:"assigned_worker_name,omitempty" gorm:"-"`   // Not stored, populated at runtime
 	AssignedWorkerPhone   *string         `json:"assigned_worker_phone,omitempty" gorm:"-"`  // Not stored, populated at runtime
 	AssignedWorkerRating  *float64        `json:"assigned_worker_rating,omitempty" gorm:"-"` // Not stored, populated at runtime
+	WorkerConfirmed       bool            `json:"worker_confirmed" gorm:"default:false"`
+	ClientConfirmed       bool            `json:"client_confirmed" gorm:"default:false"`
 	CreatedAt             time.Time       `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt             time.Time       `json:"updated_at" gorm:"autoUpdateTime"`
 }

@@ -291,3 +291,34 @@ func (h *JobHandler) CancelJob(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, SuccessResponse{Message: "job cancelled"})
 }
+
+// ConfirmCompletion godoc
+// @Summary Confirm job completion
+// @Description Client confirms that job is completed
+// @Tags jobs
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Job ID"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /jobs/{id}/confirm [post]
+func (h *JobHandler) ConfirmCompletion(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+	jobID := c.Param("id")
+
+	if err := h.jobService.ConfirmCompletion(c.Request().Context(), userID, jobID); err != nil {
+		switch err {
+		case service.ErrJobNotFound:
+			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
+		case service.ErrUnauthorizedAction:
+			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "not authorized"})
+		case service.ErrInvalidStatus:
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job not awaiting confirmation"})
+		default:
+			return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to confirm completion"})
+		}
+	}
+
+	return c.JSON(http.StatusOK, SuccessResponse{Message: "job completion confirmed"})
+}

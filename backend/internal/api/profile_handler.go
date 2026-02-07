@@ -104,3 +104,27 @@ func (h *ProfileHandler) SetUserType(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, SuccessResponse{Message: "user type set successfully"})
 }
+
+// GetProfileById godoc
+// @Summary Get a user's public profile by ID
+// @Description Returns a user's public profile information for viewing worker details
+// @Tags profile
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} service.ProfileResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /profile/{id} [get]
+func (h *ProfileHandler) GetProfileById(c echo.Context) error {
+	profileID := c.Param("id")
+
+	if profileID == "" {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "user id is required"})
+	}
+
+	profile, err := h.profileService.GetProfile(c.Request().Context(), profileID)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, ErrorResponse{Error: "profile not found"})
+	}
+
+	return c.JSON(http.StatusOK, profile)
+}

@@ -67,6 +67,7 @@ func (r *Router) Setup() *echo.Echo {
 	profile.GET("", r.profileHandler.GetProfile)
 	profile.PUT("", r.profileHandler.UpdateProfile)
 	profile.POST("/user-type", r.profileHandler.SetUserType)
+	profile.GET("/:id", r.profileHandler.GetProfileById)
 
 	// Job routes
 	jobs := protected.Group("/jobs")
@@ -78,6 +79,7 @@ func (r *Router) Setup() *echo.Echo {
 	jobs.POST("/:id/start", r.jobHandler.StartJob)
 	jobs.POST("/:id/complete", r.jobHandler.CompleteJob)
 	jobs.POST("/:id/cancel", r.jobHandler.CancelJob)
+	jobs.POST("/:id/confirm", r.jobHandler.ConfirmCompletion)
 
 	return e
 }
