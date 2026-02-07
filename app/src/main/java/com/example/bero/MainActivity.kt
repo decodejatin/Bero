@@ -48,6 +48,8 @@ import com.example.bero.ui.profile.WorkerProfileScreen
 import com.example.bero.ui.profile.ClientProfileScreen
 import com.example.bero.ui.settings.SettingsScreen
 import com.example.bero.ui.settings.NotificationPreferencesScreen
+import com.example.bero.ui.settings.PrivacyPolicyScreen
+import com.example.bero.ui.settings.TermsOfServiceScreen
 import com.example.bero.ui.help.HelpSupportScreen
 import com.example.bero.ui.search.SearchScreen
 import com.example.bero.ui.earnings.EarningsAnalyticsScreen
@@ -101,6 +103,8 @@ sealed class Screen {
     object Payment : Screen()
     data class RatingFlow(val worker: WorkerDisplayProfile) : Screen()
     object CreateJob : Screen()
+    object PrivacyPolicy : Screen()
+    object TermsOfService : Screen()
 }
 
 @Composable
@@ -167,6 +171,7 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
             val user = (authState as AuthState.Authenticated).user
             MainAppScreen(
                 userType = user.userType,
+                userName = user.fullName ?: "Client",
                 onLogout = { authViewModel.logout() },
                 settingsViewModel = settingsViewModel,
                 apiClient = authViewModel.apiClient
@@ -179,6 +184,7 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
 @Composable
 fun MainAppScreen(
     userType: UserType,
+    userName: String,
     onLogout: () -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(),
     apiClient: BeroApiClient
@@ -189,6 +195,15 @@ fun MainAppScreen(
     // Helper to handle back press or back navigation
     val onBack = { currentScreen = Screen.Main }
     
+    // Handle system back press for sub-screens (Settings, Notifications, etc.)
+    BackHandler(enabled = currentScreen !is Screen.Main) {
+        when (currentScreen) {
+            is Screen.NotificationPreferences -> currentScreen = Screen.Settings
+            is Screen.BookingFlow -> currentScreen = Screen.WorkerDetails((currentScreen as Screen.BookingFlow).worker.userId)
+            else -> currentScreen = Screen.Main
+        }
+    }
+
     // Handle system back press on main tabs
     // If on a tab other than Home (0), go back to Home
     BackHandler(enabled = currentScreen is Screen.Main && selectedTab != 0) {
@@ -226,34 +241,19 @@ fun MainAppScreen(
                         
                         NavigationBarItem(
                             icon = { 
-                                BadgedBox(badge = { Badge { Text("2") } }) {
-                                    Icon(Icons.Default.Chat, contentDescription = "Chat")
-                                }
+                                Icon(Icons.Default.Chat, contentDescription = "Chat")
                             },
                             label = { Text("Chat") },
                             selected = selectedTab == 2,
                             onClick = { selectedTab = 2 }
                         )
                         
-                        if (userType == UserType.WORKER) {
-                            NavigationBarItem(
-                                icon = { 
-                                    BadgedBox(badge = { Badge { Text("1") } }) {
-                                        Icon(Icons.Default.Notifications, contentDescription = "Alerts")
-                                    }
-                                },
-                                label = { Text("Alerts") },
-                                selected = selectedTab == 3,
-                                onClick = { selectedTab = 3 }
-                            )
-                        } else {
-                            NavigationBarItem(
-                                icon = { Icon(Icons.Default.ListAlt, contentDescription = "Bookings") },
-                                label = { Text("Bookings") },
-                                selected = selectedTab == 3,
-                                onClick = { selectedTab = 3 }
-                            )
-                        }
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.ListAlt, contentDescription = "Bookings") },
+                            label = { Text("Bookings") },
+                            selected = selectedTab == 3,
+                            onClick = { selectedTab = 3 }
+                        )
                         
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
@@ -292,7 +292,8 @@ fun MainAppScreen(
                             )
                         }
                         2 -> ConversationsScreen()
-                        3 -> if (userType == UserType.WORKER) NotificationsScreen() else BookingsScreen(
+                        3 -> BookingsScreen(
+                            isWorker = userType == UserType.WORKER,
                             onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) }
                         )
                         4 -> if (userType == UserType.WORKER) {
@@ -336,6 +337,8 @@ fun MainAppScreen(
                 onBackClick = onBack,
                 onNotificationsClick = { currentScreen = Screen.NotificationPreferences },
                 onHelpClick = { currentScreen = Screen.HelpSupport },
+                onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
+                onTermsOfServiceClick = { currentScreen = Screen.TermsOfService },
                 settingsViewModel = settingsViewModel
             )
         }
@@ -350,6 +353,14 @@ fun MainAppScreen(
         
         is Screen.NotificationPreferences -> {
             NotificationPreferencesScreen(onBackClick = { currentScreen = Screen.Settings })
+        }
+        
+        is Screen.PrivacyPolicy -> {
+            PrivacyPolicyScreen(onBackClick = { currentScreen = Screen.Settings })
+        }
+        
+        is Screen.TermsOfService -> {
+            TermsOfServiceScreen(onBackClick = { currentScreen = Screen.Settings })
         }
         
         is Screen.HelpSupport -> {
@@ -390,6 +401,7 @@ fun MainAppScreen(
         is Screen.WorkerDetails -> {
             WorkerDetailsScreen(
                 workerId = screen.workerId,
+                apiClient = apiClient,
                 onBackClick = onBack,
                 onBookClick = { worker -> currentScreen = Screen.BookingFlow(worker) },
                 onChatClick = { /* Navigate to chat */ }
