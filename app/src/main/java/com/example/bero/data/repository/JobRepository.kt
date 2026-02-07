@@ -120,4 +120,11 @@ class JobRepository(private val apiClient: BeroApiClient) {
     suspend fun cancelJob(jobId: String): Result<Unit> {
         return apiClient.cancelJob(jobId).map { }
     }
+    
+    /**
+     * Confirm job completion (client only)
+     */
+    suspend fun confirmJobCompletion(jobId: String): Result<Unit> {
+        return apiClient.confirmJobCompletion(jobId).map { }
+    }
 }

@@ -128,6 +128,22 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
+    fun confirmJobCompletion(jobId: String) {
+        viewModelScope.launch {
+            jobRepository.confirmJobCompletion(jobId).fold(
+                onSuccess = { 
+                    _uiState.value = _uiState.value.copy(completedJobId = jobId)
+                    loadJobs() 
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        error = error.message ?: "Failed to confirm job completion"
+                    )
+                }
+            )
+        }
+    }
+    
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }

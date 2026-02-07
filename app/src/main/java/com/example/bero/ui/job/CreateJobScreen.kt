@@ -27,6 +27,7 @@ import com.example.bero.data.models.ServiceCategory
  */
 @Composable
 fun CreateJobScreen(
+    clientName: String = "Client",
     viewModel: CreateJobViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onJobCreated: () -> Unit = {}
@@ -290,7 +291,7 @@ fun CreateJobScreen(
                             title = title,
                             description = description,
                             category = category,
-                            clientName = "User", // Would come from auth state
+                            clientName = clientName,
                             address = address,
                             locality = locality,
                             pincode = pincode,
