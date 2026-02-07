@@ -27,11 +27,13 @@ import com.example.bero.data.models.ServiceCategory
 import com.example.bero.data.models.WorkerDisplayProfile
 import com.example.bero.data.models.WorkerTier
 import com.example.bero.data.models.Review
+import com.example.bero.data.network.BeroApiClient
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkerDetailsScreen(
     workerId: String? = null,
+    apiClient: BeroApiClient? = null,
     onBackClick: () -> Unit = {},
     onBookClick: (WorkerDisplayProfile) -> Unit = {},
     onChatClick: (String) -> Unit = {}
@@ -41,24 +43,65 @@ fun WorkerDetailsScreen(
         onBackClick()
     }
 
-    // TODO: Replace with API call to fetch worker by ID
-    val worker = remember {
-        WorkerDisplayProfile(
-            userId = workerId ?: "",
-            name = "Worker",
-            phoneNumber = "",
-            rating = 0.0,
-            totalJobs = 0,
-            skills = emptyList(),
-            isOnline = false,
-            tier = WorkerTier.BRONZE,
-            isKycVerified = false,
-            hasVideoBio = false,
-            streakCount = 0,
-            distance = 0.0,
-            location = "",
-            memberSince = "New"
+    // Loading and error state
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // Worker profile state - starts with placeholder, updated from API
+    var worker by remember {
+        mutableStateOf(
+            WorkerDisplayProfile(
+                userId = workerId ?: "",
+                name = "Loading...",
+                phoneNumber = "",
+                rating = 0.0,
+                totalJobs = 0,
+                skills = emptyList(),
+                isOnline = false,
+                tier = WorkerTier.BRONZE,
+                isKycVerified = false,
+                hasVideoBio = false,
+                streakCount = 0,
+                distance = 0.0,
+                location = "",
+                memberSince = ""
+            )
         )
+    }
+    
+    // Fetch worker profile from API
+    LaunchedEffect(workerId) {
+        if (workerId != null && apiClient != null) {
+            isLoading = true
+            val result = apiClient.getWorkerProfile(workerId)
+            result.fold(
+                onSuccess = { profileDto ->
+                    worker = WorkerDisplayProfile(
+                        userId = profileDto.id,
+                        name = profileDto.full_name ?: "Worker",
+                        phoneNumber = profileDto.phone_number ?: "",
+                        rating = 4.5, // TODO: Get from reviews API
+                        totalJobs = 0, // TODO: Get from stats API
+                        skills = listOf(ServiceCategory.PLUMBING), // TODO: Get from profile
+                        isOnline = true,
+                        tier = WorkerTier.BRONZE,
+                        isKycVerified = profileDto.kyc_status == "VERIFIED",
+                        hasVideoBio = false,
+                        streakCount = 0,
+                        distance = null,
+                        location = profileDto.address ?: "Unknown",
+                        memberSince = "2024"
+                    )
+                    isLoading = false
+                },
+                onFailure = { error ->
+                    errorMessage = error.message
+                    isLoading = false
+                }
+            )
+        } else {
+            isLoading = false
+        }
     }
 
     val reviews = remember { emptyList<Review>() }
