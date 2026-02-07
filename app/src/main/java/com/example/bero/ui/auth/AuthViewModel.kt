@@ -16,7 +16,9 @@ import kotlinx.coroutines.launch
  */
 class AuthViewModel : ViewModel() {
     
-    private val sessionManager: SessionManager = InMemorySessionManager()
+    private val sessionManager: SessionManager = PersistentSessionManager(
+        com.example.bero.di.AppContainer.instance.tokenManager
+    )
     private val authRepository: AuthRepository = AuthRepositoryImpl()
     private val authUseCase = AuthUseCase(authRepository, sessionManager)
     
