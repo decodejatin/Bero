@@ -35,6 +35,7 @@ object ApiConfig {
         fun startJob(id: String) = "/jobs/$id/start"
         fun completeJob(id: String) = "/jobs/$id/complete"
         fun cancelJob(id: String) = "/jobs/$id/cancel"
+        fun confirmJob(id: String) = "/jobs/$id/confirm"
         
         // Profile
         const val PROFILE = "/profile"
@@ -42,7 +43,7 @@ object ApiConfig {
         
         // Workers (future)
         const val WORKERS = "/workers"
-        fun workerProfile(id: String) = "/workers/$id"
+        fun workerProfile(id: String) = "/profile/$id"
         
         // Earnings (future)
         const val EARNINGS = "/earnings"

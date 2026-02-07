@@ -331,6 +331,27 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
+    suspend fun confirmJobCompletion(jobId: String): Result<SuccessResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = post(ApiConfig.Endpoints.confirmJob(jobId), "")
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<SuccessResponse>(body))
+            } else {
+                val errorBody = response.body?.string()
+                val error = try {
+                    json.decodeFromString<ErrorResponse>(errorBody ?: "")
+                } catch (e: Exception) {
+                    ErrorResponse("Failed to confirm job completion")
+                }
+                Result.failure(Exception(error.error))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     // ==================== PROFILE API ====================
     
     suspend fun getProfile(): Result<ProfileDto> = withContext(Dispatchers.IO) {
@@ -388,6 +409,21 @@ class BeroApiClient(private val tokenManager: TokenManager) {
                     ErrorResponse("Failed to set user type")
                 }
                 Result.failure(Exception(error.error))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getWorkerProfile(workerId: String): Result<ProfileDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = get(ApiConfig.Endpoints.workerProfile(workerId))
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<ProfileDto>(body))
+            } else {
+                Result.failure(Exception("Worker profile not found"))
             }
         } catch (e: Exception) {
             Result.failure(e)
