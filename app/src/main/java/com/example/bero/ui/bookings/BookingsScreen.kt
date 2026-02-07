@@ -29,14 +29,16 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Bookings screen for clients to track their job requests
+ * Bookings screen for both clients and workers to track their jobs
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingsScreen(
+    isWorker: Boolean = false,
     jobsViewModel: JobsViewModel = viewModel(),
     onBookingClick: (Job) -> Unit = {},
-    onWorkerClick: (String) -> Unit = {} // Navigate to worker profile
+    onWorkerClick: (String) -> Unit = {}, // Navigate to worker profile (for clients)
+    onClientClick: (String) -> Unit = {} // Navigate to client profile (for workers)
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Active", "Completed", "Cancelled")
@@ -44,13 +46,16 @@ fun BookingsScreen(
     val myJobs by jobsViewModel.myJobs.collectAsState()
     val uiState by jobsViewModel.uiState.collectAsState()
     
+    // State for cancel confirmation dialog
+    var jobToCancel by remember { mutableStateOf<Job?>(null) }
+    
     // Refresh jobs on screen load
     LaunchedEffect(Unit) {
         jobsViewModel.loadJobs()
     }
     
     val filteredBookings = when (selectedTab) {
-        0 -> myJobs.filter { it.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED, JobStatus.IN_PROGRESS) }
+        0 -> myJobs.filter { it.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.AWAITING_CONFIRMATION) }
         1 -> myJobs.filter { it.status == JobStatus.COMPLETED }
         2 -> myJobs.filter { it.status == JobStatus.CANCELLED }
         else -> myJobs
@@ -108,8 +113,16 @@ fun BookingsScreen(
                 items(filteredBookings) { job ->
                     BookingCard(
                         job = job,
+                        isWorker = isWorker,
                         onClick = { onBookingClick(job) },
-                        onWorkerClick = { workerId -> onWorkerClick(workerId) }
+                        onWorkerClick = { workerId -> onWorkerClick(workerId) },
+                        onClientClick = { clientId -> onClientClick(clientId) },
+                        onCancelClick = if (selectedTab == 0 && job.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED)) {
+                            { jobToCancel = job }
+                        } else null,
+                        onConfirmClick = if (!isWorker && job.status == JobStatus.AWAITING_CONFIRMATION) {
+                            { jobsViewModel.confirmJobCompletion(job.id) }
+                        } else null
                     )
                 }
                 
@@ -119,18 +132,52 @@ fun BookingsScreen(
             }
         }
     }
+    
+    // Cancel confirmation dialog
+    jobToCancel?.let { job ->
+        AlertDialog(
+            onDismissRequest = { jobToCancel = null },
+            title = { Text("Cancel Booking?") },
+            text = { 
+                Text("Are you sure you want to cancel this booking? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        jobsViewModel.cancelJob(job.id)
+                        jobToCancel = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Cancel Booking")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { jobToCancel = null }) {
+                    Text("Keep Booking")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun BookingCard(
     job: Job,
+    isWorker: Boolean = false,
     onClick: () -> Unit,
-    onWorkerClick: (String) -> Unit = {}
+    onWorkerClick: (String) -> Unit = {},
+    onClientClick: (String) -> Unit = {},
+    onCancelClick: (() -> Unit)? = null,
+    onConfirmClick: (() -> Unit)? = null
 ) {
     val statusColor = when (job.status) {
         JobStatus.OPEN -> Color(0xFF2196F3)
         JobStatus.ACCEPTED, JobStatus.ASSIGNED -> Color(0xFF9C27B0)
         JobStatus.IN_PROGRESS -> Color(0xFFFF9800)
+        JobStatus.AWAITING_CONFIRMATION -> Color(0xFF00BCD4)
         JobStatus.COMPLETED -> Color(0xFF4CAF50)
         JobStatus.CANCELLED -> Color(0xFF757575)
         else -> Color(0xFF757575)
@@ -138,8 +185,9 @@ private fun BookingCard(
     
     val statusText = when (job.status) {
         JobStatus.OPEN -> "Finding Worker"
-        JobStatus.ACCEPTED, JobStatus.ASSIGNED -> "Worker Assigned"
+        JobStatus.ACCEPTED, JobStatus.ASSIGNED -> if (isWorker) "You Accepted" else "Worker Assigned"
         JobStatus.IN_PROGRESS -> "In Progress"
+        JobStatus.AWAITING_CONFIRMATION -> if (isWorker) "Pending Confirmation" else "Awaiting Your Confirmation"
         JobStatus.COMPLETED -> "Completed"
         JobStatus.CANCELLED -> "Cancelled"
         else -> "Unknown"
@@ -249,7 +297,46 @@ private fun BookingCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Worker info (clickable to view profile)
+                // Show different profile based on user type
+                if (isWorker) {
+                    // Worker view: Show CLIENT info
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onClientClick(job.clientId) }
+                    ) {
+                        // Client avatar
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = job.clientName.firstOrNull()?.uppercase()?.toString() ?: "C",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = job.clientName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Client",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                } else {
+                    // Client view: Show WORKER info (clickable to view profile)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -296,6 +383,7 @@ private fun BookingCard(
                             }
                         }
                     }
+                }
                     
                     // Action buttons based on status
                     when (job.status) {
@@ -341,6 +429,60 @@ private fun BookingCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                 )
+            }
+            
+            // Cancel button for active bookings
+            onCancelClick?.let { onCancel ->
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cancel Booking")
+                }
+            }
+            
+            // Confirm completion button for AWAITING_CONFIRMATION jobs
+            onConfirmClick?.let { onConfirm ->
+                Spacer(modifier = Modifier.height(12.dp))
+                if (onCancelClick == null) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
+                Button(
+                    onClick = onConfirm,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Confirm Job Completed", fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }
