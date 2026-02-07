@@ -33,7 +33,9 @@ data class Job(
     val city: String = "",
     val pincode: String = "",
     val estimatedDurationMinutes: Int = 60,
-    val requiredSkills: List<String> = emptyList()
+    val requiredSkills: List<String> = emptyList(),
+    val workerConfirmed: Boolean = false,
+    val clientConfirmed: Boolean = false
 ) {
     // Computed properties for compatibility
     val paymentAmountRupees: Double get() = amountRupees
@@ -45,6 +47,7 @@ enum class JobStatus {
     ACCEPTED,
     ASSIGNED, // Alias for ACCEPTED in some screens
     IN_PROGRESS,
+    AWAITING_CONFIRMATION,
     COMPLETED,
     CANCELLED,
     DISPUTED

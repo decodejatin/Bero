@@ -191,6 +191,41 @@ class InMemorySessionManager : SessionManager {
 }
 
 /**
+ * Persistent session manager that stores session data using TokenManager
+ * This keeps users logged in when the app is closed and reopened
+ */
+class PersistentSessionManager(
+    private val tokenManager: com.example.bero.data.network.TokenManager
+) : SessionManager {
+    
+    override suspend fun saveSession(session: Session) {
+        // TokenManager already saves tokens and user during login via BeroApiClient
+        // We need to save additional session data
+        tokenManager.saveSession(session)
+    }
+    
+    override suspend fun getSession(): Session? {
+        return tokenManager.getStoredSession()
+    }
+    
+    override suspend fun clearSession() {
+        tokenManager.clearAll()
+    }
+    
+    override suspend fun updateKycStatus(status: KycStatus) {
+        getSession()?.let { session ->
+            saveSession(session.copy(kycStatus = status))
+        }
+    }
+    
+    override suspend fun updateVideoBioStatus(hasVideoBio: Boolean) {
+        getSession()?.let { session ->
+            saveSession(session.copy(hasVideoBio = hasVideoBio))
+        }
+    }
+}
+
+/**
  * Use case for authentication flow management.
  */
 class AuthUseCase(
@@ -229,17 +264,21 @@ class AuthUseCase(
     suspend fun verifyOtp(otp: String): Result<User> {
         val otpRequest = currentOtpRequest ?: return Result.failure(AuthError.OtpExpired)
         
+        // Get tokenManager to retrieve actual token after API saves it
+        val tokenManager = com.example.bero.di.AppContainer.instance.tokenManager
+        
         return authRepository.verifyOtp(
             phoneNumber = otpRequest.phoneNumber,
             otp = otp,
             requestId = otpRequest.requestId
         ).fold(
             onSuccess = { user ->
-                val token = "mock-token-${System.currentTimeMillis()}"
+                // Get the actual token that was saved by BeroApiClient
+                val actualToken = tokenManager.getAccessToken() ?: "token-${System.currentTimeMillis()}"
                 val session = Session(
                     userId = user.id,
                     phoneNumber = user.phoneNumber,
-                    token = token,
+                    token = actualToken,
                     userType = user.userType,
                     kycStatus = user.aadhaarKycStatus,
                     isProfileComplete = !user.fullName.isNullOrBlank()
@@ -256,13 +295,17 @@ class AuthUseCase(
     }
     
     suspend fun authenticateWithTruecaller(token: String): Result<User> {
+        // Get tokenManager to retrieve actual token after API saves it
+        val tokenManager = com.example.bero.di.AppContainer.instance.tokenManager
+        
         return authRepository.authenticateWithTruecaller(token).fold(
             onSuccess = { user ->
-                val authToken = "mock-token-${System.currentTimeMillis()}"
+                // Get the actual token that was saved by BeroApiClient
+                val actualToken = tokenManager.getAccessToken() ?: "token-${System.currentTimeMillis()}"
                 val session = Session(
                     userId = user.id,
                     phoneNumber = user.phoneNumber,
-                    token = authToken,
+                    token = actualToken,
                     userType = user.userType,
                     kycStatus = user.aadhaarKycStatus,
                     isProfileComplete = !user.fullName.isNullOrBlank()
