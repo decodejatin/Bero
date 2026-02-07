@@ -31,6 +31,8 @@ fun SettingsScreen(
     onBackClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onHelpClick: () -> Unit = {},
+    onPrivacyPolicyClick: () -> Unit = {},
+    onTermsOfServiceClick: () -> Unit = {},
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val settings by settingsViewModel.settings.collectAsState()
@@ -118,14 +120,14 @@ fun SettingsScreen(
                         icon = Icons.Default.Security,
                         title = "Privacy Policy",
                         subtitle = "View our privacy policy",
-                        onClick = { }
+                        onClick = onPrivacyPolicyClick
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsClickItem(
                         icon = Icons.Default.Description,
                         title = "Terms of Service",
                         subtitle = "View terms and conditions",
-                        onClick = { }
+                        onClick = onTermsOfServiceClick
                     )
                 }
             }
