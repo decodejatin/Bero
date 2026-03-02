@@ -1,8 +1,10 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/decodejatin/bero-backend/internal/domain"
 	"github.com/decodejatin/bero-backend/internal/service"
@@ -19,58 +21,107 @@ func NewJobHandler(jobService service.JobService) *JobHandler {
 	return &JobHandler{jobService: jobService}
 }
 
-// CreateJob godoc
-// @Summary Create a new job
-// @Description Creates a new job listing (client only)
-// @Tags jobs
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param request body service.CreateJobRequest true "Job details"
-// @Success 201 {object} domain.Job
-// @Failure 400 {object} ErrorResponse
-// @Failure 401 {object} ErrorResponse
-// @Router /jobs [post]
+// CreateJobRequest is the request body for creating a job
+type CreateJobRequest struct {
+	Title                 string                 `json:"title"`
+	Description           string                 `json:"description"`
+	Category              domain.ServiceCategory `json:"category"`
+	ClientName            string                 `json:"client_name"`
+	Address               string                 `json:"address"`
+	Locality              string                 `json:"locality"`
+	City                  string                 `json:"city"`
+	Pincode               string                 `json:"pincode"`
+	Latitude              *float64               `json:"latitude,omitempty"`
+	Longitude             *float64               `json:"longitude,omitempty"`
+	EstimatedDurationMins int                    `json:"estimated_duration_minutes"`
+	PaymentAmountRupees   float64                `json:"payment_amount_rupees"`
+	ScheduledDate         string                 `json:"scheduled_date"`
+	ScheduledTimeSlot     string                 `json:"scheduled_time_slot"`
+	IsUrgent              bool                   `json:"is_urgent"`
+	RequiredSkills        []string               `json:"required_skills"`
+}
+
+// CompleteJobRequest is the request body for completing a job
+type CompleteJobRequest struct {
+	Notes     *string  `json:"notes,omitempty"`
+	PhotoURLs []string `json:"photo_urls,omitempty"`
+}
+
+// parseDate parses a date string — supports RFC3339, ISO date-time, and YYYY-MM-DD
+func parseDate(dateStr string) (time.Time, error) {
+	// Try RFC3339 first (e.g. 2026-02-25T00:00:00Z)
+	if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
+		return t, nil
+	}
+	// Try RFC3339Nano
+	if t, err := time.Parse(time.RFC3339Nano, dateStr); err == nil {
+		return t, nil
+	}
+	// Try plain date
+	if t, err := time.Parse("2006-01-02", dateStr); err == nil {
+		return t, nil
+	}
+	// Try date-time without timezone
+	if t, err := time.Parse("2006-01-02T15:04:05", dateStr); err == nil {
+		return t, nil
+	}
+	return time.Time{}, fmt.Errorf("unable to parse date: %s", dateStr)
+}
+
+// CreateJob handles POST /api/v1/jobs
 func (h *JobHandler) CreateJob(c echo.Context) error {
 	userID := c.Get("user_id").(string)
 
-	var req service.CreateJobRequest
+	var req CreateJobRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid request body"})
 	}
 
-	job, err := h.jobService.CreateJob(c.Request().Context(), userID, &req)
+	// Parse scheduled date
+	var scheduledDate time.Time
+	if req.ScheduledDate != "" {
+		t, err := parseDate(req.ScheduledDate)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid scheduled_date format, use RFC3339 or YYYY-MM-DD"})
+		}
+		scheduledDate = t
+	} else {
+		scheduledDate = time.Now()
+	}
+
+	job := &domain.Job{
+		Title:                 req.Title,
+		Description:           req.Description,
+		Category:              req.Category,
+		ClientName:            req.ClientName,
+		Address:               req.Address,
+		Locality:              req.Locality,
+		City:                  req.City,
+		Pincode:               req.Pincode,
+		Latitude:              req.Latitude,
+		Longitude:             req.Longitude,
+		EstimatedDurationMins: req.EstimatedDurationMins,
+		PaymentAmountRupees:   req.PaymentAmountRupees,
+		ScheduledDate:         scheduledDate,
+		ScheduledTimeSlot:     req.ScheduledTimeSlot,
+		IsUrgent:              req.IsUrgent,
+		RequiredSkills:        req.RequiredSkills,
+	}
+
+	result, err := h.jobService.CreateJob(c.Request().Context(), userID, job)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to create job"})
 	}
 
-	return c.JSON(http.StatusCreated, job)
+	return c.JSON(http.StatusCreated, result)
 }
 
-// GetAvailableJobs godoc
-// @Summary Get available jobs
-// @Description Returns list of open jobs for workers
-// @Tags jobs
-// @Security BearerAuth
-// @Produce json
-// @Param locality query string false "Filter by locality"
-// @Param category query string false "Filter by category"
-// @Param limit query int false "Number of results" default(20)
-// @Param offset query int false "Offset for pagination" default(0)
-// @Success 200 {array} domain.Job
-// @Router /jobs [get]
+// GetAvailableJobs handles GET /api/v1/jobs
 func (h *JobHandler) GetAvailableJobs(c echo.Context) error {
 	locality := c.QueryParam("locality")
 	categoryStr := c.QueryParam("category")
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 	offset, _ := strconv.Atoi(c.QueryParam("offset"))
-
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
 
 	var category *domain.ServiceCategory
 	if categoryStr != "" {
@@ -80,245 +131,153 @@ func (h *JobHandler) GetAvailableJobs(c echo.Context) error {
 
 	jobs, err := h.jobService.GetAvailableJobs(c.Request().Context(), locality, category, limit, offset)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch jobs"})
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to get jobs"})
 	}
 
 	return c.JSON(http.StatusOK, jobs)
 }
 
-// GetJob godoc
-// @Summary Get job details
-// @Description Returns job details by ID
-// @Tags jobs
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Job ID"
-// @Success 200 {object} domain.Job
-// @Failure 404 {object} ErrorResponse
-// @Router /jobs/{id} [get]
+// GetMyJobs handles GET /api/v1/jobs/my
+func (h *JobHandler) GetMyJobs(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+	userType := c.Get("user_type").(string)
+	limit, _ := strconv.Atoi(c.QueryParam("limit"))
+	offset, _ := strconv.Atoi(c.QueryParam("offset"))
+
+	jobs, err := h.jobService.GetMyJobs(c.Request().Context(), userID, userType, limit, offset)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to get jobs"})
+	}
+
+	return c.JSON(http.StatusOK, jobs)
+}
+
+// GetJob handles GET /api/v1/jobs/:id
 func (h *JobHandler) GetJob(c echo.Context) error {
 	jobID := c.Param("id")
 
 	job, err := h.jobService.GetJob(c.Request().Context(), jobID)
 	if err != nil {
-		return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
+		if err == service.ErrJobNotFound {
+			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
+		}
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to get job"})
 	}
 
 	return c.JSON(http.StatusOK, job)
 }
 
-// GetMyJobs godoc
-// @Summary Get my jobs
-// @Description Returns jobs for the authenticated user (client or worker)
-// @Tags jobs
-// @Security BearerAuth
-// @Produce json
-// @Param status query string false "Filter by status"
-// @Param limit query int false "Number of results" default(20)
-// @Param offset query int false "Offset for pagination" default(0)
-// @Success 200 {array} domain.Job
-// @Router /jobs/my [get]
-func (h *JobHandler) GetMyJobs(c echo.Context) error {
-	userID := c.Get("user_id").(string)
-	userType := c.Get("user_type").(string)
-	statusStr := c.QueryParam("status")
-	limit, _ := strconv.Atoi(c.QueryParam("limit"))
-	offset, _ := strconv.Atoi(c.QueryParam("offset"))
-
-	if limit <= 0 {
-		limit = 20
-	}
-
-	var status *domain.JobStatus
-	if statusStr != "" {
-		s := domain.JobStatus(statusStr)
-		status = &s
-	}
-
-	var jobs []domain.Job
-	var err error
-
-	if userType == string(domain.UserTypeWorker) {
-		jobs, err = h.jobService.GetWorkerJobs(c.Request().Context(), userID, status, limit, offset)
-	} else {
-		jobs, err = h.jobService.GetClientJobs(c.Request().Context(), userID, limit, offset)
-	}
-
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to fetch jobs"})
-	}
-
-	return c.JSON(http.StatusOK, jobs)
-}
-
-// AcceptJobRequest is the request for accepting a job
-type AcceptJobRequest struct {
-	EstimatedArrivalMins int `json:"estimated_arrival_minutes"`
-}
-
-// AcceptJob godoc
-// @Summary Accept a job
-// @Description Worker accepts an open job
-// @Tags jobs
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Job ID"
-// @Param request body AcceptJobRequest true "Acceptance details"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Router /jobs/{id}/accept [post]
+// AcceptJob handles POST /api/v1/jobs/:id/accept
 func (h *JobHandler) AcceptJob(c echo.Context) error {
-	userID := c.Get("user_id").(string)
 	jobID := c.Param("id")
+	workerID := c.Get("user_id").(string)
 
-	var req AcceptJobRequest
-	if err := c.Bind(&req); err != nil {
-		req.EstimatedArrivalMins = 30
-	}
-
-	if err := h.jobService.AcceptJob(c.Request().Context(), userID, jobID, req.EstimatedArrivalMins); err != nil {
+	job, err := h.jobService.AcceptJob(c.Request().Context(), jobID, workerID)
+	if err != nil {
 		switch err {
 		case service.ErrJobNotFound:
 			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
-		case service.ErrAlreadyAssigned:
-			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job already assigned"})
+		case service.ErrJobNotOpen:
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job is not open"})
+		case service.ErrCannotAcceptOwnJob:
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "cannot accept your own job"})
 		default:
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to accept job"})
 		}
 	}
 
-	return c.JSON(http.StatusOK, SuccessResponse{Message: "job accepted successfully"})
+	return c.JSON(http.StatusOK, job)
 }
 
-// StartJob godoc
-// @Summary Start a job
-// @Description Worker starts working on an assigned job
-// @Tags jobs
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Job ID"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Router /jobs/{id}/start [post]
+// StartJob handles POST /api/v1/jobs/:id/start
 func (h *JobHandler) StartJob(c echo.Context) error {
-	userID := c.Get("user_id").(string)
 	jobID := c.Param("id")
+	workerID := c.Get("user_id").(string)
 
-	if err := h.jobService.StartJob(c.Request().Context(), userID, jobID); err != nil {
+	job, err := h.jobService.StartJob(c.Request().Context(), jobID, workerID)
+	if err != nil {
 		switch err {
 		case service.ErrJobNotFound:
 			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
-		case service.ErrUnauthorizedAction:
-			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "not authorized"})
-		case service.ErrInvalidStatus:
-			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid status transition"})
+		case service.ErrJobNotAssigned:
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job is not assigned"})
+		case service.ErrNotAssignedWorker:
+			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "you are not the assigned worker"})
 		default:
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to start job"})
 		}
 	}
 
-	return c.JSON(http.StatusOK, SuccessResponse{Message: "job started"})
+	return c.JSON(http.StatusOK, job)
 }
 
-// CompleteJob godoc
-// @Summary Complete a job
-// @Description Worker marks job as completed
-// @Tags jobs
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Job ID"
-// @Param request body service.CompleteJobRequest true "Completion details"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Router /jobs/{id}/complete [post]
+// CompleteJob handles POST /api/v1/jobs/:id/complete
 func (h *JobHandler) CompleteJob(c echo.Context) error {
-	userID := c.Get("user_id").(string)
 	jobID := c.Param("id")
+	workerID := c.Get("user_id").(string)
 
-	var req service.CompleteJobRequest
+	var req CompleteJobRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid request body"})
 	}
 
-	if err := h.jobService.CompleteJob(c.Request().Context(), userID, jobID, &req); err != nil {
+	job, err := h.jobService.CompleteJob(c.Request().Context(), jobID, workerID, req.Notes, req.PhotoURLs)
+	if err != nil {
 		switch err {
 		case service.ErrJobNotFound:
 			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
-		case service.ErrUnauthorizedAction:
-			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "not authorized"})
-		case service.ErrInvalidStatus:
-			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid status transition"})
+		case service.ErrInvalidTransition:
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job is not in progress"})
+		case service.ErrNotAssignedWorker:
+			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "you are not the assigned worker"})
 		default:
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to complete job"})
 		}
 	}
 
-	return c.JSON(http.StatusOK, SuccessResponse{Message: "job completed"})
+	return c.JSON(http.StatusOK, job)
 }
 
-// CancelJob godoc
-// @Summary Cancel a job
-// @Description Client cancels a job
-// @Tags jobs
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Job ID"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Router /jobs/{id}/cancel [post]
-func (h *JobHandler) CancelJob(c echo.Context) error {
-	userID := c.Get("user_id").(string)
-	jobID := c.Param("id")
-
-	if err := h.jobService.CancelJob(c.Request().Context(), userID, jobID); err != nil {
-		switch err {
-		case service.ErrJobNotFound:
-			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
-		case service.ErrUnauthorizedAction:
-			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "not authorized"})
-		case service.ErrInvalidStatus:
-			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "cannot cancel job in current status"})
-		default:
-			return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to cancel job"})
-		}
-	}
-
-	return c.JSON(http.StatusOK, SuccessResponse{Message: "job cancelled"})
-}
-
-// ConfirmCompletion godoc
-// @Summary Confirm job completion
-// @Description Client confirms that job is completed
-// @Tags jobs
-// @Security BearerAuth
-// @Produce json
-// @Param id path string true "Job ID"
-// @Success 200 {object} SuccessResponse
-// @Failure 400 {object} ErrorResponse
-// @Failure 404 {object} ErrorResponse
-// @Router /jobs/{id}/confirm [post]
+// ConfirmCompletion handles POST /api/v1/jobs/:id/confirm
 func (h *JobHandler) ConfirmCompletion(c echo.Context) error {
-	userID := c.Get("user_id").(string)
 	jobID := c.Param("id")
+	userID := c.Get("user_id").(string)
 
-	if err := h.jobService.ConfirmCompletion(c.Request().Context(), userID, jobID); err != nil {
+	job, err := h.jobService.ConfirmCompletion(c.Request().Context(), jobID, userID)
+	if err != nil {
 		switch err {
 		case service.ErrJobNotFound:
 			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
-		case service.ErrUnauthorizedAction:
-			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "not authorized"})
-		case service.ErrInvalidStatus:
-			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job not awaiting confirmation"})
+		case service.ErrInvalidTransition:
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job is not awaiting confirmation"})
+		case service.ErrNotJobOwner:
+			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "only the job owner can confirm completion"})
 		default:
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to confirm completion"})
 		}
 	}
 
-	return c.JSON(http.StatusOK, SuccessResponse{Message: "job completion confirmed"})
+	return c.JSON(http.StatusOK, job)
+}
+
+// CancelJob handles POST /api/v1/jobs/:id/cancel
+func (h *JobHandler) CancelJob(c echo.Context) error {
+	jobID := c.Param("id")
+	userID := c.Get("user_id").(string)
+
+	job, err := h.jobService.CancelJob(c.Request().Context(), jobID, userID)
+	if err != nil {
+		switch err {
+		case service.ErrJobNotFound:
+			return c.JSON(http.StatusNotFound, ErrorResponse{Error: "job not found"})
+		case service.ErrInvalidTransition:
+			return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "job cannot be cancelled"})
+		case service.ErrNotJobOwner:
+			return c.JSON(http.StatusForbidden, ErrorResponse{Error: "you are not authorized to cancel this job"})
+		default:
+			return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to cancel job"})
+		}
+	}
+
+	return c.JSON(http.StatusOK, job)
 }

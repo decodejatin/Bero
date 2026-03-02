@@ -128,3 +128,22 @@ func (h *ProfileHandler) GetProfileById(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, profile)
 }
+
+// GetUserStats godoc
+// @Summary Get user stats
+// @Description Returns stats for the authenticated user (jobs posted/completed, total spent/earned, avg rating)
+// @Tags profile
+// @Security BearerAuth
+// @Success 200 {object} service.UserStatsResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /profile/stats [get]
+func (h *ProfileHandler) GetUserStats(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+
+	stats, err := h.profileService.GetUserStats(c.Request().Context(), userID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to get stats"})
+	}
+
+	return c.JSON(http.StatusOK, stats)
+}

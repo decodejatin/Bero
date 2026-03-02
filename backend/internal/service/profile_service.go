@@ -12,6 +12,7 @@ type ProfileService interface {
 	GetProfile(ctx context.Context, userID string) (*ProfileResponse, error)
 	UpdateProfile(ctx context.Context, userID string, fullName string, email *string, address *string) (*ProfileResponse, error)
 	SetUserType(ctx context.Context, userID string, userType string) error
+	GetUserStats(ctx context.Context, userID string) (*UserStatsResponse, error)
 }
 
 // ProfileResponse returned when getting profile
@@ -25,14 +26,25 @@ type ProfileResponse struct {
 	KycStatus   string  `json:"kyc_status"`
 }
 
+// UserStatsResponse returned for stats endpoint
+type UserStatsResponse struct {
+	JobsPosted    int64   `json:"jobs_posted"`
+	JobsCompleted int64   `json:"jobs_completed"`
+	TotalSpent    float64 `json:"total_spent"`
+	TotalEarned   float64 `json:"total_earned"`
+	AvgRating     float64 `json:"avg_rating"`
+}
+
 type profileService struct {
 	userRepo repository.UserRepository
+	jobRepo  repository.JobRepository
 }
 
 // NewProfileService creates a new profile service
-func NewProfileService(userRepo repository.UserRepository) ProfileService {
+func NewProfileService(userRepo repository.UserRepository, jobRepo repository.JobRepository) ProfileService {
 	return &profileService{
 		userRepo: userRepo,
+		jobRepo:  jobRepo,
 	}
 }
 
@@ -117,4 +129,37 @@ func (s *profileService) SetUserType(ctx context.Context, userID string, userTyp
 	}
 
 	return nil
+}
+
+func (s *profileService) GetUserStats(ctx context.Context, userID string) (*UserStatsResponse, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	stats := &UserStatsResponse{}
+
+	if user.UserType == domain.UserTypeClient {
+		jobsPosted, totalSpent, avgRating, err := s.jobRepo.GetClientStats(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		stats.JobsPosted = jobsPosted
+		stats.TotalSpent = totalSpent
+		stats.AvgRating = avgRating
+	} else if user.UserType == domain.UserTypeWorker {
+		jobsCompleted, totalEarned, err := s.jobRepo.GetWorkerStats(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		stats.JobsCompleted = jobsCompleted
+		stats.TotalEarned = totalEarned
+		// Get worker rating from profile
+		workerProfile, err := s.userRepo.GetWorkerProfile(ctx, userID)
+		if err == nil && workerProfile != nil {
+			stats.AvgRating = workerProfile.RatingAvg
+		}
+	}
+
+	return stats, nil
 }

@@ -51,5 +51,8 @@ func runMigrations(db *gorm.DB) error {
 		&domain.JobCompletion{},
 		&domain.OtpRequest{},
 		&domain.Session{},
+		&domain.ChatConversation{},
+		&domain.ChatMessage{},
+		&domain.SavedAddress{},
 	)
 }

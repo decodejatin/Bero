@@ -35,24 +35,34 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	authRepo := repository.NewAuthRepository(db)
 	jobRepo := repository.NewJobRepository(db)
+	chatRepo := repository.NewChatRepository(db)
 
 	// Initialize services
 	jwtCfg := service.JWTConfig{
 		SecretKey:       getEnvOrDefault("JWT_SECRET", "super-secret-key-change-in-production"),
-		AccessTokenTTL:  15 * time.Minute,
+		AccessTokenTTL:  24 * time.Hour,
 		RefreshTokenTTL: 7 * 24 * time.Hour,
 	}
 	authService := service.NewAuthService(authRepo, userRepo, jwtCfg)
 	jobService := service.NewJobService(jobRepo, userRepo)
-	profileService := service.NewProfileService(userRepo)
+	profileService := service.NewProfileService(userRepo, jobRepo)
+	chatService := service.NewChatService(chatRepo, userRepo)
+
+	// Address & Rating services
+	addressRepo := repository.NewAddressRepository(db)
+	addressService := service.NewAddressService(addressRepo)
+	ratingService := service.NewRatingService(jobRepo, userRepo)
 
 	// Initialize handlers
 	authHandler := api.NewAuthHandler(authService)
 	jobHandler := api.NewJobHandler(jobService)
 	profileHandler := api.NewProfileHandler(profileService)
+	chatHandler := api.NewChatHandler(chatService, authService)
+	addressHandler := api.NewAddressHandler(addressService)
+	ratingHandler := api.NewRatingHandler(ratingService)
 
 	// Initialize router
-	router := api.NewRouter(authHandler, jobHandler, profileHandler, authService)
+	router := api.NewRouter(authHandler, jobHandler, profileHandler, chatHandler, addressHandler, ratingHandler, authService)
 	e := router.Setup()
 
 	// Start server

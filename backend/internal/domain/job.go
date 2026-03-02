@@ -78,8 +78,10 @@ type JobCompletion struct {
 	JobID          string    `json:"job_id" gorm:"uniqueIndex;not null"`
 	WorkerID       string    `json:"worker_id" gorm:"index;not null"`
 	CompletedAt    time.Time `json:"completed_at" gorm:"not null"`
-	ClientRating   *int      `json:"client_rating,omitempty"` // 1-5
+	ClientRating   *int      `json:"client_rating,omitempty"` // 1-5 (client rates worker)
 	ClientReview   *string   `json:"client_review,omitempty"`
+	WorkerRating   *int      `json:"worker_rating,omitempty"` // 1-5 (worker rates client)
+	WorkerReview   *string   `json:"worker_review,omitempty"`
 	WorkerNotes    *string   `json:"worker_notes,omitempty"`
 	PhotoProofURLs []string  `json:"photo_proof_urls" gorm:"serializer:json"`
 }

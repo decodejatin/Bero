@@ -12,16 +12,22 @@ type Router struct {
 	authHandler    *AuthHandler
 	jobHandler     *JobHandler
 	profileHandler *ProfileHandler
+	chatHandler    *ChatHandler
+	addressHandler *AddressHandler
+	ratingHandler  *RatingHandler
 	authService    service.AuthService
 }
 
 // NewRouter creates a new router
-func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, authService service.AuthService) *Router {
+func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, chatHandler *ChatHandler, addressHandler *AddressHandler, ratingHandler *RatingHandler, authService service.AuthService) *Router {
 	return &Router{
 		echo:           echo.New(),
 		authHandler:    authHandler,
 		jobHandler:     jobHandler,
 		profileHandler: profileHandler,
+		chatHandler:    chatHandler,
+		addressHandler: addressHandler,
+		ratingHandler:  ratingHandler,
 		authService:    authService,
 	}
 }
@@ -67,6 +73,7 @@ func (r *Router) Setup() *echo.Echo {
 	profile.GET("", r.profileHandler.GetProfile)
 	profile.PUT("", r.profileHandler.UpdateProfile)
 	profile.POST("/user-type", r.profileHandler.SetUserType)
+	profile.GET("/stats", r.profileHandler.GetUserStats)
 	profile.GET("/:id", r.profileHandler.GetProfileById)
 
 	// Job routes
@@ -80,6 +87,27 @@ func (r *Router) Setup() *echo.Echo {
 	jobs.POST("/:id/complete", r.jobHandler.CompleteJob)
 	jobs.POST("/:id/cancel", r.jobHandler.CancelJob)
 	jobs.POST("/:id/confirm", r.jobHandler.ConfirmCompletion)
+	jobs.POST("/:id/rate", r.ratingHandler.SubmitRating)
+	jobs.GET("/:id/ratings", r.ratingHandler.GetJobRatings)
+
+	// Address routes
+	addresses := protected.Group("/addresses")
+	addresses.GET("", r.addressHandler.GetAddresses)
+	addresses.POST("", r.addressHandler.CreateAddress)
+	addresses.PUT("/:id", r.addressHandler.UpdateAddress)
+	addresses.DELETE("/:id", r.addressHandler.DeleteAddress)
+
+	// Chat routes (REST — protected)
+	chat := protected.Group("/chat")
+	chat.GET("/conversations", r.chatHandler.GetConversations)
+	chat.POST("/conversations", r.chatHandler.CreateOrGetConversation)
+	chat.GET("/conversations/:id/messages", r.chatHandler.GetMessages)
+	chat.POST("/conversations/:id/messages", r.chatHandler.SendMessage)
+	chat.PUT("/conversations/:id/read", r.chatHandler.MarkAsRead)
+	chat.GET("/unread", r.chatHandler.GetUnreadCount)
+
+	// Chat WebSocket (auth via query param, not middleware)
+	v1.GET("/chat/ws", r.chatHandler.HandleWebSocket)
 
 	return e
 }
