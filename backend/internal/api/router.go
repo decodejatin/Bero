@@ -8,27 +8,29 @@ import (
 
 // Router sets up all API routes
 type Router struct {
-	echo           *echo.Echo
-	authHandler    *AuthHandler
-	jobHandler     *JobHandler
-	profileHandler *ProfileHandler
-	chatHandler    *ChatHandler
-	addressHandler *AddressHandler
-	ratingHandler  *RatingHandler
-	authService    service.AuthService
+	echo              *echo.Echo
+	authHandler       *AuthHandler
+	jobHandler        *JobHandler
+	profileHandler    *ProfileHandler
+	chatHandler       *ChatHandler
+	addressHandler    *AddressHandler
+	ratingHandler     *RatingHandler
+	matchmakerHandler *MatchmakerHandler
+	authService       service.AuthService
 }
 
 // NewRouter creates a new router
-func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, chatHandler *ChatHandler, addressHandler *AddressHandler, ratingHandler *RatingHandler, authService service.AuthService) *Router {
+func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, chatHandler *ChatHandler, addressHandler *AddressHandler, ratingHandler *RatingHandler, matchmakerHandler *MatchmakerHandler, authService service.AuthService) *Router {
 	return &Router{
-		echo:           echo.New(),
-		authHandler:    authHandler,
-		jobHandler:     jobHandler,
-		profileHandler: profileHandler,
-		chatHandler:    chatHandler,
-		addressHandler: addressHandler,
-		ratingHandler:  ratingHandler,
-		authService:    authService,
+		echo:              echo.New(),
+		authHandler:       authHandler,
+		jobHandler:        jobHandler,
+		profileHandler:    profileHandler,
+		chatHandler:       chatHandler,
+		addressHandler:    addressHandler,
+		ratingHandler:     ratingHandler,
+		matchmakerHandler: matchmakerHandler,
+		authService:       authService,
 	}
 }
 
@@ -108,6 +110,13 @@ func (r *Router) Setup() *echo.Echo {
 
 	// Chat WebSocket (auth via query param, not middleware)
 	v1.GET("/chat/ws", r.chatHandler.HandleWebSocket)
+
+	// Matchmaker routes (protected)
+	matchmakerGroup := protected.Group("/matchmaker")
+	matchmakerGroup.POST("/trigger", r.matchmakerHandler.TriggerMatching)
+	matchmakerGroup.GET("/config", r.matchmakerHandler.GetConfig)
+	matchmakerGroup.PUT("/config", r.matchmakerHandler.UpdateConfig)
+	matchmakerGroup.GET("/status", r.matchmakerHandler.GetStatus)
 
 	return e
 }

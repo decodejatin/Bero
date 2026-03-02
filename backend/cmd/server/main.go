@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/decodejatin/bero-backend/config"
 	"github.com/decodejatin/bero-backend/internal/api"
+	"github.com/decodejatin/bero-backend/internal/matchmaker"
 	"github.com/decodejatin/bero-backend/internal/repository"
 	"github.com/decodejatin/bero-backend/internal/service"
 	"github.com/decodejatin/bero-backend/pkg/database"
@@ -36,6 +41,7 @@ func main() {
 	authRepo := repository.NewAuthRepository(db)
 	jobRepo := repository.NewJobRepository(db)
 	chatRepo := repository.NewChatRepository(db)
+	matchmakerRepo := repository.NewMatchmakerRepository(db)
 
 	// Initialize services
 	jwtCfg := service.JWTConfig{
@@ -53,6 +59,10 @@ func main() {
 	addressService := service.NewAddressService(addressRepo)
 	ratingService := service.NewRatingService(jobRepo, userRepo)
 
+	// Matchmaker service
+	matchCfg := matchmaker.DefaultConfig()
+	matchmakerService := service.NewMatchmakerService(matchmakerRepo, jobRepo, matchCfg)
+
 	// Initialize handlers
 	authHandler := api.NewAuthHandler(authService)
 	jobHandler := api.NewJobHandler(jobService)
@@ -60,17 +70,37 @@ func main() {
 	chatHandler := api.NewChatHandler(chatService, authService)
 	addressHandler := api.NewAddressHandler(addressService)
 	ratingHandler := api.NewRatingHandler(ratingService)
+	matchmakerHandler := api.NewMatchmakerHandler(matchmakerService)
 
 	// Initialize router
-	router := api.NewRouter(authHandler, jobHandler, profileHandler, chatHandler, addressHandler, ratingHandler, authService)
+	router := api.NewRouter(authHandler, jobHandler, profileHandler, chatHandler, addressHandler, ratingHandler, matchmakerHandler, authService)
 	e := router.Setup()
+
+	// Start matchmaker engine with graceful shutdown context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	matchmakerService.StartEngine(ctx)
+	log.Println("🧠 Matchmaker engine started")
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.ServerPort)
 	log.Printf("🚀 Server starting on %s", addr)
 	log.Println("📚 API Documentation: http://localhost" + addr + "/health")
+
+	// Graceful shutdown
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+		log.Println("🛑 Shutting down...")
+		cancel() // Stop matchmaker engine
+		if err := e.Close(); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+	}()
+
 	if err := e.Start(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		log.Printf("Server stopped: %v", err)
 	}
 }
 
