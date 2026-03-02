@@ -7,7 +7,9 @@ type ErrorResponse struct {
 
 // SuccessResponse is a standard success response
 type SuccessResponse struct {
-	Message string `json:"message"`
+	Success bool        `json:"success"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 // PaginatedResponse is a paginated response wrapper
