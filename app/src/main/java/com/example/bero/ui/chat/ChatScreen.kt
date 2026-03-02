@@ -35,10 +35,16 @@ import java.util.*
  */
 @Composable
 fun ConversationsScreen(
-    onConversationClick: (String) -> Unit = {}
+    chatViewModel: ChatViewModel,
+    onConversationClick: (String, String) -> Unit = { _, _ -> }
 ) {
-    // TODO: Replace with API call to fetch conversations
-    val conversations = remember { emptyList<Conversation>() }
+    val conversations by chatViewModel.conversations.collectAsState()
+    val isLoading by chatViewModel.isLoading.collectAsState()
+    
+    // Refresh on first composition
+    LaunchedEffect(Unit) {
+        chatViewModel.loadConversations()
+    }
     
     Column(
         modifier = Modifier
@@ -79,7 +85,7 @@ fun ConversationsScreen(
                 items(conversations) { conversation ->
                     ConversationItem(
                         conversation = conversation,
-                        onClick = { onConversationClick(conversation.id) }
+                        onClick = { onConversationClick(conversation.id, conversation.participantName) }
                     )
                 }
             }
@@ -248,13 +254,25 @@ private fun EmptyConversationsState() {
 fun ChatScreen(
     conversationId: String,
     participantName: String,
+    chatViewModel: ChatViewModel,
     onBackClick: () -> Unit = {}
 ) {
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    // TODO: Replace with API call to fetch messages
-    val messages = remember { emptyList<ChatMessage>() }
-    val currentUserId = "w1" // Worker's ID for this demo
+    val messages by chatViewModel.messages.collectAsState()
+    val currentUserId = com.example.bero.di.AppContainer.instance.tokenManager.getUserId() ?: ""
+    
+    // Open conversation and load messages
+    LaunchedEffect(conversationId) {
+        chatViewModel.openConversation(conversationId)
+    }
+    
+    // Auto-scroll to bottom when new messages arrive
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
     
     Column(
         modifier = Modifier
@@ -354,7 +372,12 @@ fun ChatScreen(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
-                        onSend = { /* Send message */ }
+                        onSend = {
+                            if (messageText.isNotBlank()) {
+                                chatViewModel.sendMessage(messageText)
+                                messageText = ""
+                            }
+                        }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color.Transparent,
@@ -367,7 +390,12 @@ fun ChatScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 
                 FilledIconButton(
-                    onClick = { /* Send message */ },
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            chatViewModel.sendMessage(messageText)
+                            messageText = ""
+                        }
+                    },
                     shape = CircleShape
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
