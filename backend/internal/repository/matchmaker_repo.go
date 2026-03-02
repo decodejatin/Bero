@@ -13,6 +13,10 @@ type MatchmakerRepository interface {
 	// GetOnlineWorkers returns online workers, optionally filtered by skills.
 	GetOnlineWorkers(ctx context.Context, skills []string) ([]domain.WorkerProfile, error)
 
+	// GetOnlineWorkersInCells returns online workers located in the given H3 cells.
+	// This provides O(1) spatial lookups using the indexed h3_index_res9 column.
+	GetOnlineWorkersInCells(ctx context.Context, h3Cells []string) ([]domain.WorkerProfile, error)
+
 	// GetUnmatchedOpenJobs returns OPEN jobs that have no assigned worker,
 	// created after windowStart.
 	GetUnmatchedOpenJobs(ctx context.Context, windowStart time.Time) ([]domain.Job, error)
@@ -44,6 +48,20 @@ func (r *matchmakerRepository) GetOnlineWorkers(ctx context.Context, skills []st
 	}
 
 	result := query.Find(&workers)
+	return workers, result.Error
+}
+
+func (r *matchmakerRepository) GetOnlineWorkersInCells(ctx context.Context, h3Cells []string) ([]domain.WorkerProfile, error) {
+	var workers []domain.WorkerProfile
+
+	if len(h3Cells) == 0 {
+		return workers, nil
+	}
+
+	result := r.db.WithContext(ctx).
+		Preload("User").
+		Where("is_online = ? AND h3_index_res9 IN ?", true, h3Cells).
+		Find(&workers)
 	return workers, result.Error
 }
 

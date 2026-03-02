@@ -90,3 +90,21 @@ func (h *MatchmakerHandler) GetStatus(c echo.Context) error {
 		Data:    status,
 	})
 }
+
+// GetDensity returns the supply density of workers per H3 cell.
+// GET /api/v1/matchmaker/density
+func (h *MatchmakerHandler) GetDensity(c echo.Context) error {
+	density, err := h.matchmakerService.GetSupplyDensity(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, SuccessResponse{
+			Success: false,
+			Message: "Failed to compute density: " + err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, SuccessResponse{
+		Success: true,
+		Message: "Supply density per H3 cell",
+		Data:    density,
+	})
+}

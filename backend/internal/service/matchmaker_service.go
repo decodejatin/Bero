@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/decodejatin/bero-backend/internal/matchmaker"
+	"github.com/decodejatin/bero-backend/internal/matchmaker/h3"
 	"github.com/decodejatin/bero-backend/internal/repository"
 )
 
@@ -25,6 +26,9 @@ type MatchmakerService interface {
 
 	// GetStatus returns the current engine status.
 	GetStatus() matchmaker.EngineStatus
+
+	// GetSupplyDensity returns worker density per H3 cell.
+	GetSupplyDensity(ctx context.Context) ([]matchmaker.SupplyDensityInfo, error)
 }
 
 type matchmakerService struct {
@@ -57,6 +61,7 @@ func NewMatchmakerService(
 }
 
 // fetchWorkers converts domain WorkerProfiles into MatchableWorkers.
+// Uses H3 spatial indexing: converts H3IndexRes9 → lat/lng for proximity calculations.
 func (s *matchmakerService) fetchWorkers(ctx context.Context) ([]matchmaker.MatchableWorker, error) {
 	profiles, err := s.matchRepo.GetOnlineWorkers(ctx, nil)
 	if err != nil {
@@ -77,9 +82,16 @@ func (s *matchmakerService) fetchWorkers(ctx context.Context) ([]matchmaker.Matc
 			IsOnline:  p.IsOnline,
 		}
 
-		// H3 index would ideally be converted to lat/lng here.
-		// For now, we set 0,0 if not available — proximity will be neutral.
-		// In production, use H3-to-LatLng conversion.
+		// Convert H3 index to lat/lng for proximity calculations
+		if p.H3IndexRes9 != nil && *p.H3IndexRes9 != "" {
+			w.H3Index = *p.H3IndexRes9
+			center, err := h3.CellToLatLng(h3.Cell(w.H3Index))
+			if err == nil {
+				w.Latitude = center.Lat
+				w.Longitude = center.Lng
+			}
+		}
+
 		workers = append(workers, w)
 	}
 
@@ -87,6 +99,7 @@ func (s *matchmakerService) fetchWorkers(ctx context.Context) ([]matchmaker.Matc
 }
 
 // fetchJobs converts domain Jobs into MatchableJobs.
+// Computes H3 cell index from job lat/lng for spatial queries.
 func (s *matchmakerService) fetchJobs(ctx context.Context) ([]matchmaker.MatchableJob, error) {
 	// Get open jobs from the last 24 hours (configurable window)
 	windowStart := time.Now().Add(-24 * time.Hour)
@@ -95,6 +108,7 @@ func (s *matchmakerService) fetchJobs(ctx context.Context) ([]matchmaker.Matchab
 		return nil, err
 	}
 
+	cfg := s.engine.Config()
 	jobs := make([]matchmaker.MatchableJob, 0, len(domainJobs))
 	for _, dj := range domainJobs {
 		j := matchmaker.MatchableJob{
@@ -109,6 +123,11 @@ func (s *matchmakerService) fetchJobs(ctx context.Context) ([]matchmaker.Matchab
 		}
 		if dj.Longitude != nil {
 			j.Longitude = *dj.Longitude
+		}
+
+		// Compute H3 index for spatial queries
+		if j.Latitude != 0 || j.Longitude != 0 {
+			j.H3Index = string(h3.LatLngToCell(j.Latitude, j.Longitude, cfg.H3Resolution))
 		}
 
 		jobs = append(jobs, j)
@@ -149,4 +168,16 @@ func (s *matchmakerService) UpdateConfig(cfg matchmaker.MatchConfig) {
 // GetStatus returns the current engine status.
 func (s *matchmakerService) GetStatus() matchmaker.EngineStatus {
 	return s.engine.Status()
+}
+
+// GetSupplyDensity returns worker density per H3 cell.
+func (s *matchmakerService) GetSupplyDensity(ctx context.Context) ([]matchmaker.SupplyDensityInfo, error) {
+	workers, err := s.fetchWorkers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := s.engine.Config()
+	density := matchmaker.GetSupplyDensity(workers, cfg.H3Resolution)
+	return density, nil
 }

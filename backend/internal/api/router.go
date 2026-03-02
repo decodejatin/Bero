@@ -117,6 +117,7 @@ func (r *Router) Setup() *echo.Echo {
 	matchmakerGroup.GET("/config", r.matchmakerHandler.GetConfig)
 	matchmakerGroup.PUT("/config", r.matchmakerHandler.UpdateConfig)
 	matchmakerGroup.GET("/status", r.matchmakerHandler.GetStatus)
+	matchmakerGroup.GET("/density", r.matchmakerHandler.GetDensity)
 
 	return e
 }
