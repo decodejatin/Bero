@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bero.data.models.*
+import com.example.bero.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -104,8 +105,8 @@ private fun BalanceCard() {
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF667eea),
-                            Color(0xFF764ba2)
+                            LuxuryCharcoal,
+                            LuxuryGoldDark
                         )
                     ),
                     shape = RoundedCornerShape(24.dp)
@@ -313,14 +314,14 @@ private fun StatCard(
             
             Surface(
                 shape = CircleShape,
-                color = if (trendUp) Color(0xFF4CAF50).copy(alpha = 0.15f) 
+                color = if (trendUp) BeroSuccess.copy(alpha = 0.15f) 
                         else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
                     modifier = Modifier.padding(10.dp),
-                    tint = if (trendUp) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+                    tint = if (trendUp) BeroSuccess else MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -330,14 +331,14 @@ private fun StatCard(
 @Composable
 private fun TransactionItem(transaction: Transaction) {
     val (icon, iconColor, bgColor) = when (transaction.type) {
-        TransactionType.JOB_EARNING -> Triple(Icons.Default.WorkOutline, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.1f))
-        TransactionType.COMMISSION_DEDUCTION -> Triple(Icons.Default.Percent, Color(0xFFFF9800), Color(0xFFFF9800).copy(alpha = 0.1f))
-        TransactionType.TDS_DEDUCTION -> Triple(Icons.Default.Receipt, Color(0xFFFF5722), Color(0xFFFF5722).copy(alpha = 0.1f))
-        TransactionType.GST_DEDUCTION -> Triple(Icons.Default.Receipt, Color(0xFFFF5722), Color(0xFFFF5722).copy(alpha = 0.1f))
-        TransactionType.WALLET_RECHARGE -> Triple(Icons.Default.Add, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.1f))
-        TransactionType.WITHDRAWAL -> Triple(Icons.Default.AccountBalance, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.1f))
-        TransactionType.BONUS -> Triple(Icons.Default.CardGiftcard, Color(0xFFE91E63), Color(0xFFE91E63).copy(alpha = 0.1f))
-        TransactionType.STREAK_REWARD -> Triple(Icons.Default.LocalFireDepartment, Color(0xFFFF5722), Color(0xFFFF5722).copy(alpha = 0.1f))
+        TransactionType.JOB_EARNING -> Triple(Icons.Default.WorkOutline, BeroSuccess, BeroSuccess.copy(alpha = 0.1f))
+        TransactionType.COMMISSION_DEDUCTION -> Triple(Icons.Default.Percent, BeroWarning, BeroWarning.copy(alpha = 0.1f))
+        TransactionType.TDS_DEDUCTION -> Triple(Icons.Default.Receipt, BeroError, BeroError.copy(alpha = 0.1f))
+        TransactionType.GST_DEDUCTION -> Triple(Icons.Default.Receipt, BeroError, BeroError.copy(alpha = 0.1f))
+        TransactionType.WALLET_RECHARGE -> Triple(Icons.Default.Add, BeroInfo, BeroInfo.copy(alpha = 0.1f))
+        TransactionType.WITHDRAWAL -> Triple(Icons.Default.AccountBalance, LuxuryGoldDark, LuxuryGoldDark.copy(alpha = 0.1f))
+        TransactionType.BONUS -> Triple(Icons.Default.CardGiftcard, LuxuryGold, LuxuryGold.copy(alpha = 0.1f))
+        TransactionType.STREAK_REWARD -> Triple(Icons.Default.LocalFireDepartment, LuxuryGold, LuxuryGold.copy(alpha = 0.1f))
     }
     
     val isPositive = transaction.amountRupees > 0
@@ -387,7 +388,7 @@ private fun TransactionItem(transaction: Transaction) {
             text = "${if (isPositive) "+" else ""}₹${String.format("%,.0f", kotlin.math.abs(transaction.amountRupees))}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isPositive) Color(0xFF4CAF50) else Color(0xFFE53935)
+            color = if (isPositive) BeroSuccess else BeroError
         )
     }
 }

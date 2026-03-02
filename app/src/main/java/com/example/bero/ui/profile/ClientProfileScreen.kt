@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
  */
 import com.example.bero.data.network.BeroApiClient
 import com.example.bero.data.network.ProfileDto
+import com.example.bero.data.network.UserStatsDto
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,7 +34,9 @@ fun ClientProfileScreen(
     onLogout: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
     onPaymentMethodsClick: () -> Unit = {},
+    onSavedAddressesClick: () -> Unit = {},
     onHelpClick: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -49,6 +52,11 @@ fun ClientProfileScreen(
             isLoading = false
         }
     }
+    
+    var stats by remember { mutableStateOf<UserStatsDto?>(null) }
+    LaunchedEffect(Unit) {
+        apiClient?.getUserStats()?.onSuccess { stats = it }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -62,7 +70,7 @@ fun ClientProfileScreen(
         
         // Stats
         item {
-            ClientStatsRow()
+            ClientStatsRow(stats)
         }
         
         // Menu Items
@@ -71,6 +79,8 @@ fun ClientProfileScreen(
                 onEditProfileClick = onEditProfileClick,
                 onSettingsClick = onSettingsClick,
                 onPaymentMethodsClick = onPaymentMethodsClick,
+                onNotificationsClick = onNotificationsClick,
+                onSavedAddressesClick = onSavedAddressesClick,
                 onHelpClick = onHelpClick
             )
         }
@@ -155,7 +165,7 @@ private fun ClientProfileHeader(profile: ProfileDto?) {
 }
 
 @Composable
-private fun ClientStatsRow() {
+private fun ClientStatsRow(stats: UserStatsDto?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -163,19 +173,21 @@ private fun ClientStatsRow() {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         ClientStatCard(
-            value = "12",
+            value = "${stats?.jobs_posted ?: 0}",
             label = "Jobs Posted",
             emoji = "📋",
             modifier = Modifier.weight(1f)
         )
+        val spent = stats?.total_spent ?: 0.0
+        val spentStr = if (spent >= 1000) "₹${String.format("%.0f", spent / 1000)}k" else "₹${String.format("%.0f", spent)}"
         ClientStatCard(
-            value = "₹15,000",
+            value = spentStr,
             label = "Total Spent",
             emoji = "💰",
             modifier = Modifier.weight(1f)
         )
         ClientStatCard(
-            value = "4.8",
+            value = String.format("%.1f", stats?.avg_rating ?: 0.0),
             label = "Avg Rating",
             emoji = "⭐",
             modifier = Modifier.weight(1f)
@@ -227,6 +239,8 @@ private fun ClientMenuSection(
     onEditProfileClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onPaymentMethodsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    onSavedAddressesClick: () -> Unit,
     onHelpClick: () -> Unit
 ) {
     Column(
@@ -257,7 +271,7 @@ private fun ClientMenuSection(
                 icon = Icons.Default.LocationOn,
                 title = "Saved Addresses",
                 subtitle = "Manage your addresses",
-                onClick = { }
+                onClick = onSavedAddressesClick
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ClientMenuItem(
@@ -271,7 +285,7 @@ private fun ClientMenuSection(
                 icon = Icons.Default.Notifications,
                 title = "Notifications",
                 subtitle = "Push notification settings",
-                onClick = onSettingsClick // Notifications are part of settings/sub-settings now
+                onClick = onNotificationsClick
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             ClientMenuItem(

@@ -28,6 +28,7 @@ import com.example.bero.data.models.WorkerDisplayProfile
 import com.example.bero.data.models.WorkerTier
 import com.example.bero.data.models.Review
 import com.example.bero.data.network.BeroApiClient
+import com.example.bero.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -185,7 +186,7 @@ fun WorkerDetailsScreen(
                                         .background(Color.White)
                                         .padding(3.dp)
                                         .clip(CircleShape)
-                                        .background(Color(0xFF4CAF50))
+                                        .background(LuxuryOnline)
                                 )
                             }
                         }
@@ -207,7 +208,7 @@ fun WorkerDetailsScreen(
                                 Icon(
                                     Icons.Default.Verified,
                                     contentDescription = "Verified",
-                                    tint = Color(0xFF2196F3),
+                                    tint = LuxuryVerified,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -227,21 +228,21 @@ fun WorkerDetailsScreen(
                                 value = "${worker.rating}",
                                 label = "Rating",
                                 icon = Icons.Default.Star,
-                                iconColor = Color(0xFFFFC107)
+                                iconColor = LuxuryGold
                             )
 
                             StatItem(
                                 value = "${worker.totalJobs}",
                                 label = "Jobs Done",
                                 icon = Icons.Default.CheckCircle,
-                                iconColor = Color(0xFF4CAF50)
+                                iconColor = BeroSuccess
                             )
 
                             StatItem(
                                 value = worker.distance?.let { "${it}km" } ?: "N/A",
                                 label = "Distance",
                                 icon = Icons.Default.LocationOn,
-                                iconColor = Color(0xFFF44336)
+                                iconColor = BeroError
                             )
                         }
                     }
@@ -423,10 +424,10 @@ fun WorkerDetailsScreen(
 @Composable
 private fun TierBadge(tier: WorkerTier) {
     val (color, label) = when (tier) {
-        WorkerTier.BRONZE -> Color(0xFFCD7F32) to "Bronze"
-        WorkerTier.SILVER -> Color(0xFFC0C0C0) to "Silver"
-        WorkerTier.GOLD -> Color(0xFFFFD700) to "Gold"
-        WorkerTier.PLATINUM -> Color(0xFFE5E4E2) to "Platinum"
+        WorkerTier.BRONZE -> TierBronze to "Bronze"
+        WorkerTier.SILVER -> TierSilver to "Silver"
+        WorkerTier.GOLD -> TierGold to "Gold"
+        WorkerTier.PLATINUM -> TierPlatinum to "Platinum"
     }
 
     Surface(
@@ -597,7 +598,7 @@ private fun ReviewItem(
                         Icon(
                             if (index < rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
                             contentDescription = null,
-                            tint = Color(0xFFFFC107),
+                            tint = LuxuryGold,
                             modifier = Modifier.size(14.dp)
                         )
                     }

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bero.data.models.*
 import com.example.bero.ui.jobs.JobsViewModel
+import com.example.bero.ui.theme.*
 
 /**
  * Worker Home Screen - Shows available jobs, earnings summary, and quick actions
@@ -125,7 +126,7 @@ private fun WorkerHeader(
     streakCount: Int
 ) {
     val statusColor by animateColorAsState(
-        targetValue = if (isOnline) Color(0xFF4CAF50) else Color(0xFF9E9E9E),
+        targetValue = if (isOnline) LuxuryOnline else LuxuryOffline,
         label = "statusColor"
     )
     
@@ -178,9 +179,9 @@ private fun WorkerHeader(
                     onCheckedChange = onToggleOnline,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = Color(0xFF4CAF50),
+                        checkedTrackColor = LuxuryOnline,
                         uncheckedThumbColor = Color.White,
-                        uncheckedTrackColor = Color(0xFF9E9E9E)
+                        uncheckedTrackColor = LuxuryOffline
                     )
                 )
             }
@@ -190,7 +191,7 @@ private fun WorkerHeader(
             // Streak Badge
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = Color(0xFFFFD700).copy(alpha = 0.2f)
+                color = LuxuryGold.copy(alpha = 0.2f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -202,7 +203,7 @@ private fun WorkerHeader(
                         text = "$streakCount Day Streak!",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFD700)
+                        color = LuxuryGold
                     )
                 }
             }
@@ -228,21 +229,21 @@ private fun QuickStatsSection(
             title = "Today",
             value = "₹${todayEarnings.toInt()}",
             icon = Icons.Default.CurrencyRupee,
-            color = Color(0xFF4CAF50)
+            color = LuxuryOnline
         )
         StatCard(
             modifier = Modifier.weight(1f),
             title = "This Week",
             value = "₹${weeklyEarnings.toInt()}",
             icon = Icons.Default.TrendingUp,
-            color = Color(0xFF2196F3)
+            color = LuxuryGold
         )
         StatCard(
             modifier = Modifier.weight(1f),
             title = "Jobs",
             value = "$jobsCompleted",
             icon = Icons.Default.CheckCircle,
-            color = Color(0xFFFF9800)
+            color = BeroWarning
         )
     }
 }
@@ -397,14 +398,14 @@ private fun JobCard(
                 if (job.urgency == JobUrgency.URGENT) {
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = Color(0xFFFF5722).copy(alpha = 0.1f)
+                        color = LuxuryUrgent.copy(alpha = 0.1f)
                     ) {
                         Text(
                             text = "URGENT",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFF5722)
+                            color = LuxuryUrgent
                         )
                     }
                 }

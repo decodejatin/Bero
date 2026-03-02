@@ -26,6 +26,7 @@ import com.example.bero.data.network.TokenManager
 import com.example.bero.data.models.UserType
 import com.example.bero.data.models.Job
 import com.example.bero.data.models.WorkerDisplayProfile
+import kotlinx.coroutines.launch
 import com.example.bero.ui.auth.AuthViewModel
 import com.example.bero.ui.auth.LoginScreen
 import com.example.bero.ui.auth.OtpVerificationScreen
@@ -37,6 +38,7 @@ import com.example.bero.ui.theme.BeroTheme
 
 // Navigation Screens
 import com.example.bero.ui.onboarding.LanguageSelectionScreen
+import com.example.bero.ui.splash.SplashScreen
 import com.example.bero.ui.job.JobsScreen as EnhancedJobsScreen
 import com.example.bero.ui.job.JobDetailsScreen
 import com.example.bero.ui.wallet.WalletScreen
@@ -101,10 +103,12 @@ sealed class Screen {
     data class WorkerDetails(val workerId: String) : Screen()
     data class BookingFlow(val worker: WorkerDisplayProfile) : Screen()
     object Payment : Screen()
-    data class RatingFlow(val worker: WorkerDisplayProfile) : Screen()
+    data class RatingFlow(val worker: WorkerDisplayProfile, val jobId: String) : Screen()
     object CreateJob : Screen()
     object PrivacyPolicy : Screen()
     object TermsOfService : Screen()
+    data class Chat(val conversationId: String, val participantName: String) : Screen()
+    object SavedAddresses : Screen()
 }
 
 @Composable
@@ -113,6 +117,16 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
     val authState by authViewModel.authState.collectAsState()
     val uiState by authViewModel.uiState.collectAsState()
     val settings by settingsViewModel.settings.collectAsState()
+    
+    // Splash screen state — shows on cold start only
+    var showSplash by remember { mutableStateOf(true) }
+    
+    if (showSplash) {
+        SplashScreen(
+            onSplashComplete = { showSplash = false }
+        )
+        return
+    }
     
     // Check if language has been selected (not first launch)
     val hasSelectedLanguage = settings.languageCode.isNotEmpty()
@@ -191,6 +205,7 @@ fun MainAppScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Main) }
+    val scope = rememberCoroutineScope()
     
     // Helper to handle back press or back navigation
     val onBack = { currentScreen = Screen.Main }
@@ -200,9 +215,13 @@ fun MainAppScreen(
         when (currentScreen) {
             is Screen.NotificationPreferences -> currentScreen = Screen.Settings
             is Screen.BookingFlow -> currentScreen = Screen.WorkerDetails((currentScreen as Screen.BookingFlow).worker.userId)
+            is Screen.Chat -> currentScreen = Screen.Main
             else -> currentScreen = Screen.Main
         }
     }
+
+    // Create ChatViewModel
+    val chatViewModel = remember { com.example.bero.di.AppContainer.instance.createChatViewModel() }
 
     // Handle system back press on main tabs
     // If on a tab other than Home (0), go back to Home
@@ -215,89 +234,88 @@ fun MainAppScreen(
         is Screen.Main -> {
             Scaffold(
                 bottomBar = {
-                    NavigationBar {
+                    val navItemColors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = com.example.bero.ui.theme.LuxuryGold,
+                        selectedTextColor = com.example.bero.ui.theme.LuxuryGold,
+                        indicatorColor = com.example.bero.ui.theme.LuxuryGold.copy(alpha = 0.12f),
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 0.dp
+                    ) {
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                            label = { Text("Home") },
+                            icon = { Icon(if (selectedTab == 0) Icons.Default.Home else Icons.Default.Home, contentDescription = "Home") },
+                            label = { Text("Home", fontSize = 11.sp) },
                             selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 }
+                            onClick = { selectedTab = 0 },
+                            colors = navItemColors
                         )
-                        
+
+                        // Workers get Jobs tab; Clients skip this (Services = duplicate)
                         if (userType == UserType.WORKER) {
                             NavigationBarItem(
                                 icon = { Icon(Icons.Default.WorkOutline, contentDescription = "Jobs") },
-                                label = { Text("Jobs") },
+                                label = { Text("Jobs", fontSize = 11.sp) },
                                 selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 }
-                            )
-                        } else {
-                            NavigationBarItem(
-                                icon = { Icon(Icons.Default.GridView, contentDescription = "Services") },
-                                label = { Text("Services") },
-                                selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 }
+                                onClick = { selectedTab = 1 },
+                                colors = navItemColors
                             )
                         }
-                        
+
+                        val chatIdx = if (userType == UserType.WORKER) 2 else 1
+                        val bookingsIdx = if (userType == UserType.WORKER) 3 else 2
+                        val profileIdx = if (userType == UserType.WORKER) 4 else 3
+
                         NavigationBarItem(
-                            icon = { 
-                                Icon(Icons.Default.Chat, contentDescription = "Chat")
-                            },
-                            label = { Text("Chat") },
-                            selected = selectedTab == 2,
-                            onClick = { selectedTab = 2 }
+                            icon = { Icon(Icons.Default.Chat, contentDescription = "Chat") },
+                            label = { Text("Chat", fontSize = 11.sp) },
+                            selected = selectedTab == chatIdx,
+                            onClick = { selectedTab = chatIdx },
+                            colors = navItemColors
                         )
-                        
+
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.ListAlt, contentDescription = "Bookings") },
-                            label = { Text("Bookings") },
-                            selected = selectedTab == 3,
-                            onClick = { selectedTab = 3 }
+                            label = { Text("Bookings", fontSize = 11.sp) },
+                            selected = selectedTab == bookingsIdx,
+                            onClick = { selectedTab = bookingsIdx },
+                            colors = navItemColors
                         )
-                        
+
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                            label = { Text("Profile") },
-                            selected = selectedTab == 4,
-                            onClick = { selectedTab = 4 }
+                            label = { Text("Profile", fontSize = 11.sp) },
+                            selected = selectedTab == profileIdx,
+                            onClick = { selectedTab = profileIdx },
+                            colors = navItemColors
                         )
                     }
                 }
             ) { innerPadding ->
                 Box(modifier = Modifier.padding(innerPadding)) {
-                    when (selectedTab) {
-                        0 -> {
-                            if (userType == UserType.WORKER) {
-                                WorkerHomeScreen(
-                                    onJobClick = { job -> currentScreen = Screen.JobDetails(job) },
-                                    onViewAllJobsClick = { selectedTab = 1 }
-                                )
-                            } else {
-                                ClientHomeScreen(
-                                    onCategoryClick = { currentScreen = Screen.Search },
-                                    onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) },
-                                    onViewAllCategoriesClick = { selectedTab = 1 },
-                                    onPostJobClick = { currentScreen = Screen.CreateJob }
-                                )
-                            }
-                        }
-                        1 -> if (userType == UserType.WORKER) {
-                            EnhancedJobsScreen(
+                    // Tab content — Worker has 5 tabs (0-4), Client has 4 tabs (0-3)
+                    if (userType == UserType.WORKER) {
+                        when (selectedTab) {
+                            0 -> WorkerHomeScreen(
+                                onJobClick = { job -> currentScreen = Screen.JobDetails(job) },
+                                onViewAllJobsClick = { selectedTab = 1 }
+                            )
+                            1 -> EnhancedJobsScreen(
                                 onJobClick = { job -> currentScreen = Screen.JobDetails(job) }
                             )
-                        } else {
-                            // On Category Click from CategoriesScreen -> Search/List (Simplified to Search for now)
-                            CategoriesScreen(
-                                onCategoryClick = { currentScreen = Screen.Search }
+                            2 -> ConversationsScreen(
+                                chatViewModel = chatViewModel,
+                                onConversationClick = { id, name ->
+                                    currentScreen = Screen.Chat(id, name)
+                                }
                             )
-                        }
-                        2 -> ConversationsScreen()
-                        3 -> BookingsScreen(
-                            isWorker = userType == UserType.WORKER,
-                            onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) }
-                        )
-                        4 -> if (userType == UserType.WORKER) {
-                            WorkerProfileScreen(
+                            3 -> BookingsScreen(
+                                isWorker = true,
+                                onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) }
+                            )
+                            4 -> WorkerProfileScreen(
                                 apiClient = apiClient,
                                 onLogout = onLogout,
                                 onEditProfileClick = { currentScreen = Screen.EditProfile },
@@ -308,13 +326,34 @@ fun MainAppScreen(
                                 onSkillsClick = { currentScreen = Screen.SkillManagement },
                                 onHelpClick = { currentScreen = Screen.HelpSupport }
                             )
-                        } else {
-                            ClientProfileScreen(
+                        }
+                    } else {
+                        // Client: Home(0), Chat(1), Bookings(2), Profile(3) — no Services tab
+                        when (selectedTab) {
+                            0 -> ClientHomeScreen(
+                                onCategoryClick = { currentScreen = Screen.Search },
+                                onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) },
+                                onViewAllCategoriesClick = { currentScreen = Screen.Search },
+                                onPostJobClick = { currentScreen = Screen.CreateJob }
+                            )
+                            1 -> ConversationsScreen(
+                                chatViewModel = chatViewModel,
+                                onConversationClick = { id, name ->
+                                    currentScreen = Screen.Chat(id, name)
+                                }
+                            )
+                            2 -> BookingsScreen(
+                                isWorker = false,
+                                onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) }
+                            )
+                            3 -> ClientProfileScreen(
                                 apiClient = apiClient,
                                 onLogout = onLogout,
                                 onEditProfileClick = { currentScreen = Screen.EditProfile },
                                 onSettingsClick = { currentScreen = Screen.Settings },
+                                onNotificationsClick = { currentScreen = Screen.NotificationPreferences },
                                 onPaymentMethodsClick = { currentScreen = Screen.Payment },
+                                onSavedAddressesClick = { currentScreen = Screen.SavedAddresses },
                                 onHelpClick = { currentScreen = Screen.HelpSupport }
                             )
                         }
@@ -425,6 +464,41 @@ fun MainAppScreen(
                 onJobCreated = {
                     // Navigate back to home after job is created
                     onBack()
+                }
+            )
+        }
+        
+        is Screen.Chat -> {
+            com.example.bero.ui.chat.ChatScreen(
+                conversationId = screen.conversationId,
+                participantName = screen.participantName,
+                chatViewModel = chatViewModel,
+                onBackClick = onBack
+            )
+        }
+        
+        is Screen.SavedAddresses -> {
+            com.example.bero.ui.profile.SavedAddressesScreen(
+                apiClient = apiClient,
+                onBackClick = onBack
+            )
+        }
+        
+        is Screen.RatingFlow -> {
+            val ratingScreen = screen as Screen.RatingFlow
+            com.example.bero.ui.rating.RatingFlowScreen(
+                worker = ratingScreen.worker,
+                onSkip = onBack,
+                onSubmit = { rating, review, tags ->
+                    scope.launch {
+                        apiClient?.submitRating(
+                            jobId = ratingScreen.jobId,
+                            rating = rating.toInt(),
+                            review = review,
+                            tags = tags
+                        )
+                        currentScreen = Screen.Main
+                    }
                 }
             )
         }

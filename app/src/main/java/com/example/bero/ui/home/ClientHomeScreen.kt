@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bero.data.models.*
+import com.example.bero.ui.theme.*
 
 /**
  * Client Home Screen - Shows service categories, featured workers, and recent bookings
@@ -345,7 +346,7 @@ private fun FeaturedWorkerCard(
                             .size(14.dp)
                             .align(Alignment.BottomEnd)
                             .clip(CircleShape)
-                            .background(Color(0xFF4CAF50))
+                            .background(LuxuryOnline)
                     )
                 }
             }
@@ -388,7 +389,7 @@ private fun FeaturedWorkerCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = Color(0xFF2196F3).copy(alpha = 0.1f)
+                    color = LuxuryVerified.copy(alpha = 0.1f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -398,13 +399,13 @@ private fun FeaturedWorkerCard(
                             Icons.Default.Verified,
                             contentDescription = null,
                             modifier = Modifier.size(12.dp),
-                            tint = Color(0xFF2196F3)
+                            tint = LuxuryVerified
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(
                             text = "Verified",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF2196F3)
+                            color = LuxuryVerified
                         )
                     }
                 }
@@ -465,8 +466,8 @@ private fun RecentActivitySection(recentBookings: List<Pair<String, String>>) {
                                 if (booking.second.contains("Completed")) Icons.Default.CheckCircle 
                                 else Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = if (booking.second.contains("Completed")) Color(0xFF4CAF50) 
-                                       else Color(0xFFFF9800)
+                                tint = if (booking.second.contains("Completed")) LuxuryOnline 
+                                       else BeroWarning
                             )
                         },
                         trailingContent = {
@@ -494,7 +495,7 @@ private fun PromotionsBanner() {
             .padding(16.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF6366F1)
+            containerColor = LuxuryCharcoal
         )
     ) {
         Row(
@@ -523,7 +524,7 @@ private fun PromotionsBanner() {
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF6366F1)
+                        color = LuxuryCharcoal
                     )
                 }
             }

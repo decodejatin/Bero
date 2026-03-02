@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.bero.data.models.*
+import com.example.bero.ui.theme.*
 
 import com.example.bero.data.network.BeroApiClient
 import com.example.bero.data.network.ProfileDto
@@ -133,10 +134,10 @@ fun WorkerProfileScreen(
 @Composable
 private fun WorkerProfileHeader(worker: WorkerDisplayProfile) {
     val tierColor = when (worker.tier) {
-        WorkerTier.GOLD -> Color(0xFFFFD700)
-        WorkerTier.SILVER -> Color(0xFFC0C0C0)
-        WorkerTier.BRONZE -> Color(0xFFCD7F32)
-        WorkerTier.PLATINUM -> Color(0xFFE5E4E2)
+        WorkerTier.GOLD -> TierGold
+        WorkerTier.SILVER -> TierSilver
+        WorkerTier.BRONZE -> TierBronze
+        WorkerTier.PLATINUM -> TierPlatinum
     }
     
     Box(
@@ -180,7 +181,7 @@ private fun WorkerProfileHeader(worker: WorkerDisplayProfile) {
                             .size(32.dp)
                             .align(Alignment.BottomEnd),
                         shape = CircleShape,
-                        color = Color(0xFF2196F3)
+                        color = LuxuryVerified
                     ) {
                         Icon(
                             Icons.Default.Verified,
@@ -242,7 +243,7 @@ private fun WorkerProfileHeader(worker: WorkerDisplayProfile) {
                         else Icons.Outlined.Star,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = Color(0xFFFFD700)
+                        tint = LuxuryGold
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
@@ -300,8 +301,8 @@ private fun StreakCard(worker: WorkerDisplayProfile) {
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFFFF6B6B),
-                            Color(0xFFFF8E53)
+                            LuxuryGold,
+                            TierBronze
                         )
                     ),
                     shape = RoundedCornerShape(20.dp)
@@ -656,7 +657,7 @@ private fun ReviewCard(review: Review) {
                             else Icons.Outlined.Star,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = Color(0xFFFFD700)
+                            tint = LuxuryGold
                         )
                     }
                 }
