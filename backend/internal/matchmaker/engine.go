@@ -155,22 +155,30 @@ func (e *Engine) runMatchingRound(ctx context.Context) {
 		return
 	}
 
-	// 3. Build weight matrix
-	weightMatrix := BuildWeightMatrix(workers, jobs, cfg, now)
+	var assignments []Assignment
 
-	// 4. Solve maximum weight matching via Hungarian algorithm
-	assignments := SolveMaxWeightMatching(weightMatrix, workers, jobs, cfg.MinWeightThreshold)
+	if cfg.EnablePruning && cfg.KNearestNeighbors > 0 {
+		// 3a. Dynamic Candidate Pruning: use H3 k-ring spatial index
+		// to prune the graph to k-nearest neighbors per job → O(k³) instead of O(n³)
+		assignments = PruneAndMatch(workers, jobs, cfg, now)
+		log.Printf("[matchmaker] Window %d: %d workers × %d jobs → %d assignments (pruned, k=%d)",
+			windowID, len(workers), len(jobs), len(assignments), cfg.KNearestNeighbors)
+	} else {
+		// 3b. Full matrix: classic Hungarian on all W×J pairs
+		weightMatrix := BuildWeightMatrix(workers, jobs, cfg, now)
+		assignments = SolveMaxWeightMatching(weightMatrix, workers, jobs, cfg.MinWeightThreshold)
+		log.Printf("[matchmaker] Window %d: %d workers × %d jobs → %d assignments (full matrix)",
+			windowID, len(workers), len(jobs), len(assignments))
+	}
 
-	log.Printf("[matchmaker] Window %d: %d workers × %d jobs → %d assignments", windowID, len(workers), len(jobs), len(assignments))
-
-	// 5. Execute assignments via callback
+	// 4. Execute assignments via callback
 	for _, a := range assignments {
 		if err := e.onAssign(ctx, a); err != nil {
 			log.Printf("[matchmaker] Failed to assign worker %s to job %s: %v", a.WorkerID, a.JobID, err)
 		}
 	}
 
-	// 6. Publish result
+	// 5. Publish result
 	result := MatchResult{
 		Assignments: assignments,
 		Timestamp:   now,
@@ -183,7 +191,7 @@ func (e *Engine) runMatchingRound(ctx context.Context) {
 		// Channel full, discard oldest (consumer too slow)
 	}
 
-	// 7. Update status
+	// 6. Update status
 	e.mu.Lock()
 	e.status.TotalRounds++
 	e.status.TotalMatches += int64(len(assignments))

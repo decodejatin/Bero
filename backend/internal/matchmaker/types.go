@@ -7,6 +7,7 @@ type MatchableWorker struct {
 	ID        string
 	Latitude  float64
 	Longitude float64
+	H3Index   string // H3 cell index (resolution 9)
 	Skills    []string
 	RatingAvg float64
 	IsOnline  bool
@@ -17,6 +18,7 @@ type MatchableJob struct {
 	ID             string
 	Latitude       float64
 	Longitude      float64
+	H3Index        string // H3 cell index (resolution 9)
 	RequiredSkills []string
 	Category       string
 	CreatedAt      time.Time
@@ -39,10 +41,10 @@ type MatchResult struct {
 // MatchConfig holds the tunable parameters for the matching algorithm.
 type MatchConfig struct {
 	// Weight coefficients (α values)
-	AlphaProximity  float64 `json:"alpha_proximity"`  // α1 — proximity weight
-	AlphaReputation float64 `json:"alpha_reputation"` // α2 — reputation weight
+	AlphaProximity  float64 `json:"alpha_proximity"`   // α1 — proximity weight
+	AlphaReputation float64 `json:"alpha_reputation"`  // α2 — reputation weight
 	AlphaSkillMatch float64 `json:"alpha_skill_match"` // α3 — skill match weight
-	AlphaWaitTime   float64 `json:"alpha_wait_time"`  // α4 — wait time penalty
+	AlphaWaitTime   float64 `json:"alpha_wait_time"`   // α4 — wait time penalty
 
 	// Batching window
 	WindowDurationSeconds int `json:"window_duration_seconds"` // sliding window size (default 30)
@@ -52,6 +54,13 @@ type MatchConfig struct {
 
 	// Minimum weight threshold — assignments below this score are discarded
 	MinWeightThreshold float64 `json:"min_weight_threshold"`
+
+	// H3 Geospatial settings
+	H3Resolution      int `json:"h3_resolution"`       // H3 resolution level (default 9)
+	KNearestNeighbors int `json:"k_nearest_neighbors"` // candidates per job for pruning (default 10)
+
+	// Enable dynamic candidate pruning (set false to use full matrix)
+	EnablePruning bool `json:"enable_pruning"`
 }
 
 // DefaultConfig returns sensible default configuration.
@@ -64,5 +73,8 @@ func DefaultConfig() MatchConfig {
 		WindowDurationSeconds: 30,
 		MaxDistanceKm:         25.0,
 		MinWeightThreshold:    0.10,
+		H3Resolution:          9,
+		KNearestNeighbors:     10,
+		EnablePruning:         true,
 	}
 }
