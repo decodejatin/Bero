@@ -240,7 +240,10 @@ class AuthUseCase(
     suspend fun initialize() {
         val session = sessionManager.getSession()
         if (session != null) {
-            _authState.value = determineAuthState(session)
+            // Trust the stored session — token refresh is handled by the OkHttp Authenticator
+            // when actual API calls are made. No need to validate on startup.
+            android.util.Log.d("AuthUseCase", "Restoring session for user: ${session.userId}")
+            _authState.value = determineAuthStateFromSession(session)
         } else {
             _authState.value = AuthState.NotAuthenticated
         }
@@ -369,7 +372,11 @@ class AuthUseCase(
 
     
     private suspend fun determineAuthState(session: Session): AuthState {
-        val user = authRepository.getCurrentUser().getOrNull() ?: User(
+        return determineAuthStateFromSession(session)
+    }
+
+    private fun determineAuthStateFromSession(session: Session): AuthState {
+        val user = User(
             id = session.userId,
             phoneNumber = session.phoneNumber,
             userType = session.userType,

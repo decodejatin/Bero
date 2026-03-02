@@ -45,6 +45,57 @@ class BeroApiClient(private val tokenManager: TokenManager) {
             }
             chain.proceed(newRequest)
         }
+        // Auto-refresh token on 401 responses
+        .authenticator { _, response ->
+            // Don't retry if we already tried refreshing or this is a refresh endpoint
+            if (response.request.url.encodedPath.contains("refresh") ||
+                response.request.header("X-Token-Refreshed") != null) {
+                return@authenticator null
+            }
+            
+            synchronized(this) {
+                val refreshToken = tokenManager.getRefreshToken() ?: return@authenticator null
+                
+                // Call refresh endpoint synchronously
+                val refreshBody = json.encodeToString(RefreshTokenRequest(refreshToken))
+                    .toRequestBody("application/json; charset=utf-8".toMediaType())
+                val refreshRequest = Request.Builder()
+                    .url(ApiConfig.baseUrl + ApiConfig.Endpoints.REFRESH_TOKEN)
+                    .post(refreshBody)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+                
+                // Use a separate client without the authenticator to avoid loops
+                val refreshClient = OkHttpClient.Builder()
+                    .connectTimeout(ApiConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .readTimeout(ApiConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .build()
+                
+                try {
+                    val refreshResponse = refreshClient.newCall(refreshRequest).execute()
+                    if (refreshResponse.isSuccessful) {
+                        val body = refreshResponse.body?.string()
+                        if (body != null) {
+                            val tokens = json.decodeFromString<AuthTokens>(body)
+                            tokenManager.saveTokens(tokens)
+                            
+                            // Retry the original request with the new token
+                            response.request.newBuilder()
+                                .header("Authorization", "Bearer ${tokens.access_token}")
+                                .header("X-Token-Refreshed", "true")
+                                .build()
+                        } else null
+                    } else {
+                        // Refresh failed — session truly expired
+                        tokenManager.clearAll()
+                        null
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("BeroApiClient", "Token refresh failed: ${e.message}")
+                    null
+                }
+            }
+        }
         .build()
     
     private fun isPublicEndpoint(path: String): Boolean {
@@ -245,14 +296,14 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
-    suspend fun acceptJob(jobId: String, estimatedArrivalMinutes: Int = 30): Result<SuccessResponse> = withContext(Dispatchers.IO) {
+    suspend fun acceptJob(jobId: String, estimatedArrivalMinutes: Int = 30): Result<JobDto> = withContext(Dispatchers.IO) {
         try {
             val requestBody = json.encodeToString(AcceptJobRequest(estimatedArrivalMinutes))
             val response = post(ApiConfig.Endpoints.acceptJob(jobId), requestBody)
             
             if (response.isSuccessful) {
                 val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
-                Result.success(json.decodeFromString<SuccessResponse>(body))
+                Result.success(json.decodeFromString<JobDto>(body))
             } else {
                 val errorBody = response.body?.string()
                 val error = try {
@@ -267,13 +318,13 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
-    suspend fun startJob(jobId: String): Result<SuccessResponse> = withContext(Dispatchers.IO) {
+    suspend fun startJob(jobId: String): Result<JobDto> = withContext(Dispatchers.IO) {
         try {
-            val response = post(ApiConfig.Endpoints.startJob(jobId), "")
+            val response = post(ApiConfig.Endpoints.startJob(jobId), "{}")
             
             if (response.isSuccessful) {
                 val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
-                Result.success(json.decodeFromString<SuccessResponse>(body))
+                Result.success(json.decodeFromString<JobDto>(body))
             } else {
                 val errorBody = response.body?.string()
                 val error = try {
@@ -288,14 +339,14 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
-    suspend fun completeJob(jobId: String, request: CompleteJobRequest): Result<SuccessResponse> = withContext(Dispatchers.IO) {
+    suspend fun completeJob(jobId: String, request: CompleteJobRequest): Result<JobDto> = withContext(Dispatchers.IO) {
         try {
             val requestBody = json.encodeToString(request)
             val response = post(ApiConfig.Endpoints.completeJob(jobId), requestBody)
             
             if (response.isSuccessful) {
                 val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
-                Result.success(json.decodeFromString<SuccessResponse>(body))
+                Result.success(json.decodeFromString<JobDto>(body))
             } else {
                 val errorBody = response.body?.string()
                 val error = try {
@@ -310,13 +361,13 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
-    suspend fun cancelJob(jobId: String): Result<SuccessResponse> = withContext(Dispatchers.IO) {
+    suspend fun cancelJob(jobId: String): Result<JobDto> = withContext(Dispatchers.IO) {
         try {
-            val response = post(ApiConfig.Endpoints.cancelJob(jobId), "")
+            val response = post(ApiConfig.Endpoints.cancelJob(jobId), "{}")
             
             if (response.isSuccessful) {
                 val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
-                Result.success(json.decodeFromString<SuccessResponse>(body))
+                Result.success(json.decodeFromString<JobDto>(body))
             } else {
                 val errorBody = response.body?.string()
                 val error = try {
@@ -331,13 +382,13 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
-    suspend fun confirmJobCompletion(jobId: String): Result<SuccessResponse> = withContext(Dispatchers.IO) {
+    suspend fun confirmJobCompletion(jobId: String): Result<JobDto> = withContext(Dispatchers.IO) {
         try {
-            val response = post(ApiConfig.Endpoints.confirmJob(jobId), "")
+            val response = post(ApiConfig.Endpoints.confirmJob(jobId), "{}")
             
             if (response.isSuccessful) {
                 val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
-                Result.success(json.decodeFromString<SuccessResponse>(body))
+                Result.success(json.decodeFromString<JobDto>(body))
             } else {
                 val errorBody = response.body?.string()
                 val error = try {
@@ -430,6 +481,198 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
+    // ==================== CHAT API ====================
+    
+    suspend fun getConversations(): Result<List<ConversationDto>> = withContext(Dispatchers.IO) {
+        try {
+            val response = get(ApiConfig.Endpoints.CONVERSATIONS)
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<List<ConversationDto>>(body))
+            } else {
+                Result.failure(Exception("Failed to get conversations: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getOrCreateConversation(participantId: String, jobId: String? = null): Result<ConversationDto> = withContext(Dispatchers.IO) {
+        try {
+            val requestBody = json.encodeToString(CreateConversationRequest(participantId, jobId))
+            val response = post(ApiConfig.Endpoints.CONVERSATIONS, requestBody)
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<ConversationDto>(body))
+            } else {
+                val errorBody = response.body?.string()
+                val error = try {
+                    json.decodeFromString<ErrorResponse>(errorBody ?: "")
+                } catch (e: Exception) {
+                    ErrorResponse("Failed to create conversation")
+                }
+                Result.failure(Exception(error.error))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getMessages(conversationId: String, limit: Int = 50, offset: Int = 0): Result<List<ChatMessageDto>> = withContext(Dispatchers.IO) {
+        try {
+            val endpoint = ApiConfig.Endpoints.conversationMessages(conversationId) + "?limit=$limit&offset=$offset"
+            val response = get(endpoint)
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<List<ChatMessageDto>>(body))
+            } else {
+                Result.failure(Exception("Failed to get messages: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun sendChatMessage(conversationId: String, content: String, messageType: String = "text"): Result<ChatMessageDto> = withContext(Dispatchers.IO) {
+        try {
+            val requestBody = json.encodeToString(SendChatMessageRequest(content, messageType))
+            val response = post(ApiConfig.Endpoints.conversationMessages(conversationId), requestBody)
+            
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                Result.success(json.decodeFromString<ChatMessageDto>(body))
+            } else {
+                val errorBody = response.body?.string()
+                val error = try {
+                    json.decodeFromString<ErrorResponse>(errorBody ?: "")
+                } catch (e: Exception) {
+                    ErrorResponse("Failed to send message")
+                }
+                Result.failure(Exception(error.error))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun markConversationAsRead(conversationId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = put(ApiConfig.Endpoints.markConversationRead(conversationId), "")
+            if (response.isSuccessful) Result.success(Unit)
+            else Result.failure(Exception("Failed to mark as read"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun getUnreadCount(): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val response = get(ApiConfig.Endpoints.UNREAD_COUNT)
+            if (response.isSuccessful) {
+                val body = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+                val map = json.decodeFromString<Map<String, Int>>(body)
+                Result.success(map["unread_count"] ?: 0)
+            } else {
+                Result.failure(Exception("Failed to get unread count"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    // ==================== Stats ====================
+    
+    suspend fun getUserStats(): Result<UserStatsDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = get(ApiConfig.Endpoints.PROFILE_STATS)
+            val body = response.body?.string() ?: ""
+            if (response.isSuccessful) {
+                Result.success(json.decodeFromString(body))
+            } else {
+                Result.failure(Exception("Failed to get stats: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    // ==================== Addresses ====================
+    
+    suspend fun getAddresses(): Result<List<SavedAddressDto>> = withContext(Dispatchers.IO) {
+        try {
+            val response = get(ApiConfig.Endpoints.ADDRESSES)
+            val body = response.body?.string() ?: "[]"
+            if (response.isSuccessful) {
+                Result.success(json.decodeFromString(body))
+            } else {
+                Result.failure(Exception("Failed to get addresses: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun createAddress(request: CreateAddressRequest): Result<SavedAddressDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = post(ApiConfig.Endpoints.ADDRESSES, json.encodeToString(request))
+            val body = response.body?.string() ?: ""
+            if (response.isSuccessful) {
+                Result.success(json.decodeFromString(body))
+            } else {
+                Result.failure(Exception("Failed to create address: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateAddress(id: String, request: CreateAddressRequest): Result<SavedAddressDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = put(ApiConfig.Endpoints.addressById(id), json.encodeToString(request))
+            val body = response.body?.string() ?: ""
+            if (response.isSuccessful) {
+                Result.success(json.decodeFromString(body))
+            } else {
+                Result.failure(Exception("Failed to update address: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun deleteAddress(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = delete(ApiConfig.Endpoints.addressById(id))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete address: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    // ==================== Ratings ====================
+    
+    suspend fun submitRating(jobId: String, rating: Int, review: String = "", tags: List<String> = emptyList()): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val request = SubmitRatingRequest(rating = rating, review = review, tags = tags)
+            val response = post(ApiConfig.Endpoints.submitRating(jobId), json.encodeToString(request))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val body = response.body?.string() ?: ""
+                Result.failure(Exception("Failed to submit rating: $body"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     // ==================== HTTP Helpers ====================
     
     private fun get(endpoint: String): okhttp3.Response {
@@ -460,6 +703,15 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         val request = Request.Builder()
             .url(ApiConfig.baseUrl + endpoint)
             .put(requestBody)
+            .addHeader("Content-Type", "application/json")
+            .build()
+        return client.newCall(request).execute()
+    }
+    
+    private fun delete(endpoint: String): okhttp3.Response {
+        val request = Request.Builder()
+            .url(ApiConfig.baseUrl + endpoint)
+            .delete()
             .addHeader("Content-Type", "application/json")
             .build()
         return client.newCall(request).execute()

@@ -38,6 +38,10 @@ class AppDependencies(private val context: Context) {
         BeroApiClient(tokenManager)
     }
     
+    val webSocketClient: com.example.bero.data.network.WebSocketClient by lazy {
+        com.example.bero.data.network.WebSocketClient(tokenManager)
+    }
+    
     // Repositories
     val authRepository: AuthRepository by lazy {
         AuthRepository(apiClient, tokenManager)
@@ -58,5 +62,9 @@ class AppDependencies(private val context: Context) {
     
     fun createWorkerHomeViewModel(): WorkerHomeViewModel {
         return WorkerHomeViewModel()
+    }
+    
+    fun createChatViewModel(): com.example.bero.ui.chat.ChatViewModel {
+        return com.example.bero.ui.chat.ChatViewModel(apiClient, webSocketClient, tokenManager)
     }
 }

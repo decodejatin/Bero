@@ -190,3 +190,80 @@ data class UpdateProfileRequest(
 data class SetUserTypeRequest(
     val user_type: String
 )
+
+// Chat DTOs
+@Serializable
+data class ConversationDto(
+    val id: String,
+    val participant_id: String,
+    val participant_name: String = "User",
+    val job_id: String? = null,
+    val last_message: String = "",
+    val last_message_at: String = "",
+    val unread_count: Long = 0,
+    val created_at: String = ""
+)
+
+@Serializable
+data class ChatMessageDto(
+    val id: String,
+    val conversation_id: String,
+    val sender_id: String,
+    val content: String,
+    val message_type: String = "text",
+    val is_read: Boolean = false,
+    val created_at: String = ""
+)
+
+@Serializable
+data class CreateConversationRequest(
+    val participant_id: String,
+    val job_id: String? = null
+)
+
+@Serializable
+data class SendChatMessageRequest(
+    val content: String,
+    val message_type: String = "text"
+)
+
+// Stats DTOs
+@Serializable
+data class UserStatsDto(
+    val jobs_posted: Long = 0,
+    val jobs_completed: Long = 0,
+    val total_spent: Double = 0.0,
+    val total_earned: Double = 0.0,
+    val avg_rating: Double = 0.0
+)
+
+// Address DTOs
+@Serializable
+data class SavedAddressDto(
+    val id: String = "",
+    val user_id: String = "",
+    val label: String = "",
+    val full_address: String = "",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val is_default: Boolean = false,
+    val created_at: String = "",
+    val updated_at: String = ""
+)
+
+@Serializable
+data class CreateAddressRequest(
+    val label: String,
+    val full_address: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val is_default: Boolean = false
+)
+
+// Rating DTOs
+@Serializable
+data class SubmitRatingRequest(
+    val rating: Int,
+    val review: String = "",
+    val tags: List<String> = emptyList()
+)

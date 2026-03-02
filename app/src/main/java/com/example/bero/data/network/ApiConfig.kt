@@ -45,10 +45,32 @@ object ApiConfig {
         const val WORKERS = "/workers"
         fun workerProfile(id: String) = "/profile/$id"
         
+        // Chat
+        const val CONVERSATIONS = "/chat/conversations"
+        fun conversationMessages(id: String) = "/chat/conversations/$id/messages"
+        fun markConversationRead(id: String) = "/chat/conversations/$id/read"
+        const val UNREAD_COUNT = "/chat/unread"
+        
         // Earnings (future)
         const val EARNINGS = "/earnings"
         const val EARNINGS_SUMMARY = "/earnings/summary"
+        
+        // Stats
+        const val PROFILE_STATS = "/profile/stats"
+        
+        // Addresses
+        const val ADDRESSES = "/addresses"
+        fun addressById(id: String) = "/addresses/$id"
+        
+        // Ratings
+        fun submitRating(jobId: String) = "/jobs/$jobId/rate"
+        fun jobRatings(jobId: String) = "/jobs/$jobId/ratings"
     }
+    
+    // WebSocket URL (replace http with ws)
+    val wsBaseUrl: String
+        get() = baseUrl.replace("http://", "ws://").replace("https://", "wss://")
+                .replace("/api/v1", "/api/v1/chat/ws")
     
     // HTTP Timeouts
     const val CONNECT_TIMEOUT_SECONDS = 30L
