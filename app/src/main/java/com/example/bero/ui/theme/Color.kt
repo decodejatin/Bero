@@ -2,37 +2,64 @@ package com.example.bero.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Bero Brand Colors
-val BeroPrimary = Color(0xFF2563EB)       // Bright Blue - Trust & Reliability
-val BeroPrimaryDark = Color(0xFF1D4ED8)
-val BeroSecondary = Color(0xFF10B981)     // Emerald Green - Action & Success
-val BeroSecondaryDark = Color(0xFF059669)
+// ═══════════════════════════════════════════════════════
+//  BERO — Ultra-Premium Luxury Royal Palette
+// ═══════════════════════════════════════════════════════
 
-// Surface Colors
-val BeroBackground = Color(0xFFF8FAFC)
-val BeroSurface = Color(0xFFFFFFFF)
-val BeroSurfaceVariant = Color(0xFFF1F5F9)
+// Primary — Deep Charcoal (Authority & Elegance)
+val BeroPrimary = Color(0xFF1A1A2E)
+val BeroPrimaryDark = Color(0xFF12121F)
+val BeroPrimaryLight = Color(0xFF2A2A42)
 
-// Dark Theme
-val BeroDarkBackground = Color(0xFF0F172A)
-val BeroDarkSurface = Color(0xFF1E293B)
-val BeroDarkSurfaceVariant = Color(0xFF334155)
+// Secondary / Accent — Champagne Gold (Luxury Signal)
+val BeroSecondary = Color(0xFFC9A84C)
+val BeroSecondaryDark = Color(0xFFAD8F3A)
+val BeroSecondaryLight = Color(0xFFDBC06E)
 
-// Text Colors
-val BeroOnPrimary = Color(0xFFFFFFFF)
-val BeroOnSecondary = Color(0xFFFFFFFF)
-val BeroOnBackground = Color(0xFF1E293B)
-val BeroOnSurface = Color(0xFF1E293B)
-val BeroOnDarkBackground = Color(0xFFF8FAFC)
-val BeroOnDarkSurface = Color(0xFFF8FAFC)
+// Tertiary — Warm Bronze
+val BeroTertiary = Color(0xFF8B6914)
 
-// Status Colors
-val BeroSuccess = Color(0xFF22C55E)
-val BeroWarning = Color(0xFFF59E0B)
-val BeroError = Color(0xFFEF4444)
-val BeroInfo = Color(0xFF3B82F6)
+// ── Light Theme Surfaces ────────────────────────────
+val BeroBackground = Color(0xFFFAF8F5)       // Warm Ivory
+val BeroSurface = Color(0xFFFFFEF9)           // Warm White
+val BeroSurfaceVariant = Color(0xFFF3F0EB)    // Soft Linen
 
-// Worker Tier Colors
-val TierBronze = Color(0xFFCD7F32)
-val TierSilver = Color(0xFFC0C0C0)
-val TierGold = Color(0xFFFFD700)
+// ── Dark Theme Surfaces ─────────────────────────────
+val BeroDarkBackground = Color(0xFF0D0D14)    // Rich Onyx
+val BeroDarkSurface = Color(0xFF1A1A2E)       // Deep Charcoal
+val BeroDarkSurfaceVariant = Color(0xFF2A2A42) // Muted Plum
+
+// ── Text / On-colors ────────────────────────────────
+val BeroOnPrimary = Color(0xFFF5F0E8)         // Warm Cream
+val BeroOnSecondary = Color(0xFF1A1A2E)       // Charcoal on Gold
+val BeroOnBackground = Color(0xFF1A1A2E)      // Charcoal
+val BeroOnSurface = Color(0xFF1A1A2E)         // Charcoal
+val BeroOnDarkBackground = Color(0xFFF5F0E8)  // Warm Cream
+val BeroOnDarkSurface = Color(0xFFF5F0E8)     // Warm Cream
+
+// ── Status Colors (Muted & Elegant) ─────────────────
+val BeroSuccess = Color(0xFF2D6A4F)           // Forest Emerald
+val BeroWarning = Color(0xFFD4A017)           // Royal Amber
+val BeroError = Color(0xFFC1574A)             // Soft Rose
+val BeroInfo = Color(0xFF4A6FA5)              // Slate Blue
+
+// ── Luxury Accent Colors ────────────────────────────
+val LuxuryGold = Color(0xFFC9A84C)            // Champagne Gold
+val LuxuryGoldLight = Color(0xFFDBC06E)       // Light Gold
+val LuxuryGoldDark = Color(0xFFAD8F3A)        // Antique Gold
+val LuxuryIvory = Color(0xFFFAF8F5)           // Ivory
+val LuxuryCharcoal = Color(0xFF1A1A2E)        // Deep Charcoal
+val LuxuryOnyx = Color(0xFF0D0D14)            // Rich Onyx
+
+// ── Worker Tier Colors (Refined) ────────────────────
+val TierBronze = Color(0xFF8B6914)            // Warm Bronze
+val TierSilver = Color(0xFF9EABB8)            // Muted Silver
+val TierGold = Color(0xFFC9A84C)              // Champagne Gold
+val TierPlatinum = Color(0xFFB8C5D0)          // Soft Platinum
+
+// ── Functional Accents ──────────────────────────────
+val LuxuryOnline = Color(0xFF2D6A4F)          // Muted Emerald (online status)
+val LuxuryOffline = Color(0xFF8A8A8A)         // Warm Gray (offline status)
+val LuxuryUrgent = Color(0xFFC1574A)          // Soft Rose (urgent badges)
+val LuxuryVerified = Color(0xFFC9A84C)        // Gold (verified badges)
+val LuxuryPromo = Color(0xFF1A1A2E)           // Charcoal (promo banners)
