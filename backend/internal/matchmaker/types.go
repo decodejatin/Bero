@@ -10,6 +10,7 @@ type MatchableWorker struct {
 	H3Index      string // H3 cell index (resolution 9)
 	Skills       []string
 	RatingAvg    float64
+	TrustScore   float64 // Bayesian Wilson Score (§6.1) — preferred over RatingAvg
 	IsOnline     bool
 	CurrentJobID string // currently assigned job (empty = unassigned)
 }

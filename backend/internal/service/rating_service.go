@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/decodejatin/bero-backend/internal/domain"
 	"github.com/decodejatin/bero-backend/internal/repository"
+	"github.com/decodejatin/bero-backend/internal/reputation"
 )
 
 // RatingService defines rating business logic
@@ -72,14 +74,36 @@ func (s *ratingService) SubmitRating(ctx context.Context, jobID, userID string, 
 		completion.ClientRating = &rating
 		completion.ClientReview = &reviewWithTags
 
-		// Update worker's average rating
+		// Update worker's Bayesian reputation profile (§6.1)
 		if job.AssignedWorkerID != nil {
 			workerProfile, err := s.userRepo.GetWorkerProfile(ctx, *job.AssignedWorkerID)
 			if err == nil && workerProfile != nil {
+				// § 6.1 — Bayesian Running Average
+				// Step 1: Update running average (kept for display / backwards compat)
 				newCount := workerProfile.RatingCount + 1
 				newAvg := ((workerProfile.RatingAvg * float64(workerProfile.RatingCount)) + float64(rating)) / float64(newCount)
-				workerProfile.RatingAvg = newAvg
 				workerProfile.RatingCount = newCount
+				workerProfile.RatingAvg = newAvg
+
+				// Step 2: Update Beta posterior (S, F parameters)
+				s0, f0 := reputation.RatingToSuccessFailure(rating)
+				workerProfile.BayesSuccesses += s0
+				workerProfile.BayesFailures += f0
+
+				// Step 3: Recompute Wilson Score Trust Score
+				workerProfile.TrustScore = reputation.RecomputeTrustScore(
+					workerProfile.BayesSuccesses,
+					workerProfile.BayesFailures,
+				)
+
+				// § 6.2 — Bayesian Truth Serum reward
+				// Build peer distribution from existing ratings for this worker
+				peerRatings := buildPeerRatingsFromProfile(workerProfile)
+				btsReward := reputation.BTSReward(rating, peerRatings, reputation.GlobalRatingPrior)
+				btsNorm := reputation.BTSRewardNormalized(btsReward)
+				log.Printf("[reputation] worker=%s rating=%d★ TrustScore=%.4f BTS_reward=%.4f (normalized=%.4f)",
+					workerProfile.UserID, rating, workerProfile.TrustScore, btsReward, btsNorm)
+
 				s.userRepo.UpdateWorkerProfile(ctx, workerProfile)
 			}
 		}
@@ -121,4 +145,18 @@ func joinTags(tags []string) string {
 		result += t
 	}
 	return result
+}
+
+// buildPeerRatingsFromProfile reconstructs a synthetic peer ratings list from
+// the worker's stored BayesSuccesses (≥4★) and BayesFailures (≤3★) counts.
+// This avoids an extra DB query for peer data while feeding BTS computation.
+func buildPeerRatingsFromProfile(p *domain.WorkerProfile) []int {
+	ratings := make([]int, 0, p.BayesSuccesses+p.BayesFailures)
+	for i := 0; i < p.BayesSuccesses; i++ {
+		ratings = append(ratings, 5) // represent successes as 5★
+	}
+	for i := 0; i < p.BayesFailures; i++ {
+		ratings = append(ratings, 2) // represent failures as 2★
+	}
+	return ratings
 }
