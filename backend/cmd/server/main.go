@@ -4,18 +4,24 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/decodejatin/bero-backend/config"
+	jobpb "github.com/decodejatin/bero-backend/gen/pb/job"
+	matcherpb "github.com/decodejatin/bero-backend/gen/pb/matcher"
+	userpb "github.com/decodejatin/bero-backend/gen/pb/user"
 	"github.com/decodejatin/bero-backend/internal/api"
+	grpcserver "github.com/decodejatin/bero-backend/internal/grpc/server"
 	"github.com/decodejatin/bero-backend/internal/matchmaker"
 	"github.com/decodejatin/bero-backend/internal/repository"
 	"github.com/decodejatin/bero-backend/internal/service"
 	"github.com/decodejatin/bero-backend/pkg/database"
 	"github.com/decodejatin/bero-backend/pkg/eventbus"
+	"google.golang.org/grpc"
 )
 
 // @title Bero API
@@ -70,14 +76,38 @@ func main() {
 	matchmakerService := service.NewMatchmakerService(matchmakerRepo, jobRepo, matchCfg)
 
 	// Set up event subscriptions
-	// When an order is placed, the matchmaker can optionally trigger a round
 	bus.Subscribe(eventbus.EventOrderPlaced, func(e eventbus.Event) {
 		log.Printf("[event] Order placed: %s — triggering matchmaker", e.ID)
 		matchmakerService.Trigger()
 	})
-	_ = bus // eventbus is ready for services to publish events
+	_ = bus
 
-	// Initialize handlers
+	// ── gRPC Server ───────────────────────────────────────────────────────────
+	grpcAddr := fmt.Sprintf(":%s", cfg.GRPCPort)
+	lis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		log.Fatalf("Failed to listen on gRPC port %s: %v", cfg.GRPCPort, err)
+	}
+
+	grpcSrv := grpc.NewServer()
+
+	// Register all gRPC services
+	userpb.RegisterUserServiceServer(grpcSrv, grpcserver.NewUserServer(userRepo, matchmakerRepo))
+	jobpb.RegisterJobServiceServer(grpcSrv, grpcserver.NewJobServer(jobRepo))
+	// MatcherServer needs direct access to the engine — extract it via a helper
+	matcherpb.RegisterMatcherServiceServer(grpcSrv, grpcserver.NewMatcherServer(
+		matchmakerService.GetEngine(),
+	))
+
+	go func() {
+		log.Printf("⚡ gRPC server listening on %s (binary Protobuf)", grpcAddr)
+		if err := grpcSrv.Serve(lis); err != nil {
+			log.Printf("gRPC server stopped: %v", err)
+		}
+	}()
+	// ─────────────────────────────────────────────────────────────────────────
+
+	// Initialize HTTP handlers
 	authHandler := api.NewAuthHandler(authService)
 	jobHandler := api.NewJobHandler(jobService)
 	profileHandler := api.NewProfileHandler(profileService)
@@ -98,8 +128,7 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.ServerPort)
-	log.Printf("🚀 Server starting on %s", addr)
-	log.Println("📚 API Documentation: http://localhost" + addr + "/health")
+	log.Printf("🚀 HTTP server starting on %s", addr)
 
 	// Graceful shutdown
 	go func() {
@@ -107,9 +136,10 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 		log.Println("🛑 Shutting down...")
-		cancel() // Stop matchmaker engine
+		cancel()
+		grpcSrv.GracefulStop()
 		if err := e.Close(); err != nil {
-			log.Printf("Server shutdown error: %v", err)
+			log.Printf("HTTP server shutdown error: %v", err)
 		}
 	}()
 

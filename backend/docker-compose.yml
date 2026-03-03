@@ -31,3 +31,7 @@ networks:
 
 volumes:
   postgres_data:
+# Note: Add a "backend" service entry here when containerising the Go app.
+# It should expose:
+#   - "8080:8080"   # HTTP/REST (mobile clients)
+#   - "50051:50051" # gRPC (internal services, set via GRPC_PORT env var)

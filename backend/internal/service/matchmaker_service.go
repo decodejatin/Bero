@@ -29,6 +29,9 @@ type MatchmakerService interface {
 
 	// GetSupplyDensity returns worker density per H3 cell.
 	GetSupplyDensity(ctx context.Context) ([]matchmaker.SupplyDensityInfo, error)
+
+	// GetEngine exposes the underlying matching engine for gRPC server registration.
+	GetEngine() *matchmaker.Engine
 }
 
 type matchmakerService struct {
@@ -180,4 +183,10 @@ func (s *matchmakerService) GetSupplyDensity(ctx context.Context) ([]matchmaker.
 	cfg := s.engine.Config()
 	density := matchmaker.GetSupplyDensity(workers, cfg.H3Resolution)
 	return density, nil
+}
+
+// GetEngine returns the underlying matching engine.
+// Used by the gRPC MatcherServer for direct engine access.
+func (s *matchmakerService) GetEngine() *matchmaker.Engine {
+	return s.engine
 }

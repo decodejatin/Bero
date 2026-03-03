@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	ServerPort string
+	GRPCPort   string // internal gRPC port (default: 50051)
 	DBHost     string
 	DBPort     string
 	DBUser     string
@@ -22,6 +23,7 @@ type Config struct {
 func LoadConfig() *Config {
 	return &Config{
 		ServerPort:   getEnv("SERVER_PORT", "8080"),
+		GRPCPort:     getEnv("GRPC_PORT", "50051"),
 		DBHost:       getEnv("DB_HOST", "localhost"),
 		DBPort:       getEnv("DB_PORT", "5432"),
 		DBUser:       getEnv("DB_USER", "postgres"),
