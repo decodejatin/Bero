@@ -57,6 +57,7 @@ import com.example.bero.ui.search.SearchScreen
 import com.example.bero.ui.earnings.EarningsAnalyticsScreen
 import com.example.bero.ui.reviews.ReviewsManagementScreen
 import com.example.bero.ui.skills.SkillManagementScreen
+import com.example.bero.ui.settings.RatingHistoryScreen
 import com.example.bero.ui.worker.WorkerDetailsScreen
 import com.example.bero.ui.booking.BookingFlowScreen
 import com.example.bero.ui.payment.PaymentScreen
@@ -98,12 +99,13 @@ sealed class Screen {
     object EarningsAnalytics : Screen()
     object ReviewsManagement : Screen()
     object SkillManagement : Screen()
+    object RatingHistory : Screen()
     
     // Client Specific
     data class WorkerDetails(val workerId: String) : Screen()
     data class BookingFlow(val worker: WorkerDisplayProfile) : Screen()
     object Payment : Screen()
-    data class RatingFlow(val worker: WorkerDisplayProfile, val jobId: String) : Screen()
+    data class RatingFlow(val worker: WorkerDisplayProfile? = null, val jobId: String, val participantName: String = worker?.name ?: "User") : Screen()
     object CreateJob : Screen()
     object PrivacyPolicy : Screen()
     object TermsOfService : Screen()
@@ -313,7 +315,13 @@ fun MainAppScreen(
                             )
                             3 -> BookingsScreen(
                                 isWorker = true,
-                                onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) }
+                                onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) },
+                                onRateClick = { job ->
+                                    currentScreen = Screen.RatingFlow(
+                                        jobId = job.id,
+                                        participantName = job.clientName
+                                    )
+                                }
                             )
                             4 -> WorkerProfileScreen(
                                 apiClient = apiClient,
@@ -344,7 +352,13 @@ fun MainAppScreen(
                             )
                             2 -> BookingsScreen(
                                 isWorker = false,
-                                onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) }
+                                onWorkerClick = { workerId -> currentScreen = Screen.WorkerDetails(workerId) },
+                                onRateClick = { job ->
+                                    currentScreen = Screen.RatingFlow(
+                                        jobId = job.id,
+                                        participantName = job.workerName ?: "Worker"
+                                    )
+                                }
                             )
                             3 -> ClientProfileScreen(
                                 apiClient = apiClient,
@@ -378,6 +392,9 @@ fun MainAppScreen(
                 onHelpClick = { currentScreen = Screen.HelpSupport },
                 onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
                 onTermsOfServiceClick = { currentScreen = Screen.TermsOfService },
+                onSkillsClick = { currentScreen = Screen.SkillManagement },
+                onRatingHistoryClick = { currentScreen = Screen.RatingHistory },
+                isWorker = userType == UserType.WORKER,
                 settingsViewModel = settingsViewModel
             )
         }
@@ -432,6 +449,10 @@ fun MainAppScreen(
             SkillManagementScreen(onBackClick = onBack)
         }
         
+        is Screen.RatingHistory -> {
+            RatingHistoryScreen(onBackClick = onBack)
+        }
+        
         is Screen.Payment -> {
             PaymentScreen(onBackClick = onBack)
         }
@@ -443,7 +464,12 @@ fun MainAppScreen(
                 apiClient = apiClient,
                 onBackClick = onBack,
                 onBookClick = { worker -> currentScreen = Screen.BookingFlow(worker) },
-                onChatClick = { /* Navigate to chat */ }
+                onChatClick = { /* Navigate to chat */ },
+                onViewBookingsClick = {
+                    // Navigate to Bookings tab
+                    currentScreen = Screen.Main
+                    selectedTab = if (userType == UserType.WORKER) 3 else 2
+                }
             )
         }
         
@@ -486,19 +512,19 @@ fun MainAppScreen(
         
         is Screen.RatingFlow -> {
             val ratingScreen = screen as Screen.RatingFlow
+            val jobsViewModel: com.example.bero.ui.jobs.JobsViewModel = viewModel()
             com.example.bero.ui.rating.RatingFlowScreen(
                 worker = ratingScreen.worker,
+                participantName = ratingScreen.participantName,
+                jobId = ratingScreen.jobId,
                 onSkip = onBack,
                 onSubmit = { rating, review, tags ->
-                    scope.launch {
-                        apiClient?.submitRating(
-                            jobId = ratingScreen.jobId,
-                            rating = rating.toInt(),
-                            review = review,
-                            tags = tags
-                        )
-                        currentScreen = Screen.Main
-                    }
+                    jobsViewModel.submitRating(
+                        jobId = ratingScreen.jobId,
+                        rating = rating.toInt(),
+                        review = review
+                    )
+                    currentScreen = Screen.Main
                 }
             )
         }
