@@ -144,12 +144,44 @@ class JobsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
+    fun workerMarkComplete(jobId: String) {
+        viewModelScope.launch {
+            jobRepository.workerMarkComplete(jobId).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(completedJobId = jobId)
+                    loadJobs()
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        error = error.message ?: "Failed to mark job complete"
+                    )
+                }
+            )
+        }
+    }
+    
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
     
     fun setSelectedTab(tab: Int) {
         _uiState.value = _uiState.value.copy(selectedTab = tab)
+    }
+    
+    fun submitRating(jobId: String, rating: Int, review: String = "") {
+        viewModelScope.launch {
+            jobRepository.submitMutualRating(jobId, rating, review).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(ratedJobId = jobId)
+                    loadJobs()
+                },
+                onFailure = { error ->
+                    _uiState.value = _uiState.value.copy(
+                        error = error.message ?: "Failed to submit rating"
+                    )
+                }
+            )
+        }
     }
 }
 
@@ -162,5 +194,6 @@ data class JobsUiState(
     val error: String? = null,
     val selectedTab: Int = 0,
     val acceptedJobId: String? = null,
-    val completedJobId: String? = null
+    val completedJobId: String? = null,
+    val ratedJobId: String? = null
 )

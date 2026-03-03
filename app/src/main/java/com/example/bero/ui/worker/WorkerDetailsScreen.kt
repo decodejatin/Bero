@@ -23,11 +23,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bero.data.models.ServiceCategory
+import com.example.bero.data.models.JobStatus
 import com.example.bero.data.models.WorkerDisplayProfile
 import com.example.bero.data.models.WorkerTier
 import com.example.bero.data.models.Review
 import com.example.bero.data.network.BeroApiClient
+import com.example.bero.ui.jobs.JobsViewModel
 import com.example.bero.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,9 +38,11 @@ import com.example.bero.ui.theme.*
 fun WorkerDetailsScreen(
     workerId: String? = null,
     apiClient: BeroApiClient? = null,
+    jobsViewModel: JobsViewModel = viewModel(),
     onBackClick: () -> Unit = {},
     onBookClick: (WorkerDisplayProfile) -> Unit = {},
-    onChatClick: (String) -> Unit = {}
+    onChatClick: (String) -> Unit = {},
+    onViewBookingsClick: () -> Unit = {}
 ) {
     // Handle system back press
     androidx.activity.compose.BackHandler {
@@ -390,7 +395,7 @@ fun WorkerDetailsScreen(
         }
     }
 
-    // Bottom Book Button
+    // Bottom Button — always show Book Now
     Box(
         modifier = Modifier.fillMaxSize()
     ) {

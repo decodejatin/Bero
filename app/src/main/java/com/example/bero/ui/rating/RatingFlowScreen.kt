@@ -25,7 +25,9 @@ import com.example.bero.data.models.WorkerDisplayProfile
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RatingFlowScreen(
-    worker: WorkerDisplayProfile, // In a real app, this would be passed or fetched
+    worker: WorkerDisplayProfile? = null, // Optional — used when available
+    participantName: String = worker?.name ?: "User", // Fallback name
+    jobId: String = "",
     isMandatory: Boolean = false,
     onSkip: () -> Unit = {},
     onSubmit: (Float, String, List<String>) -> Unit = { _, _, _ -> }
@@ -54,7 +56,7 @@ fun RatingFlowScreen(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = worker.name.first().uppercase(),
+                text = participantName.firstOrNull()?.uppercase() ?: "?",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -64,7 +66,7 @@ fun RatingFlowScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Rate ${worker.name}",
+            text = "Rate $participantName",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )

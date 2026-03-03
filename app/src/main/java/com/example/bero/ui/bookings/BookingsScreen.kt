@@ -38,7 +38,8 @@ fun BookingsScreen(
     jobsViewModel: JobsViewModel = viewModel(),
     onBookingClick: (Job) -> Unit = {},
     onWorkerClick: (String) -> Unit = {}, // Navigate to worker profile (for clients)
-    onClientClick: (String) -> Unit = {} // Navigate to client profile (for workers)
+    onClientClick: (String) -> Unit = {}, // Navigate to client profile (for workers)
+    onRateClick: (Job) -> Unit = {} // Navigate to rating screen
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Active", "Completed", "Cancelled")
@@ -55,8 +56,8 @@ fun BookingsScreen(
     }
     
     val filteredBookings = when (selectedTab) {
-        0 -> myJobs.filter { it.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.AWAITING_CONFIRMATION) }
-        1 -> myJobs.filter { it.status == JobStatus.COMPLETED }
+        0 -> myJobs.filter { it.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.WORKER_COMPLETED, JobStatus.AWAITING_CONFIRMATION, JobStatus.FULLY_COMPLETED) }
+        1 -> myJobs.filter { it.status in listOf(JobStatus.COMPLETED, JobStatus.FULLY_COMPLETED) }
         2 -> myJobs.filter { it.status == JobStatus.CANCELLED }
         else -> myJobs
     }
@@ -120,8 +121,17 @@ fun BookingsScreen(
                         onCancelClick = if (selectedTab == 0 && job.status in listOf(JobStatus.OPEN, JobStatus.ACCEPTED)) {
                             { jobToCancel = job }
                         } else null,
-                        onConfirmClick = if (!isWorker && job.status == JobStatus.AWAITING_CONFIRMATION) {
+                        onConfirmClick = if (!isWorker && job.status in listOf(JobStatus.WORKER_COMPLETED, JobStatus.AWAITING_CONFIRMATION)) {
                             { jobsViewModel.confirmJobCompletion(job.id) }
+                        } else null,
+                        onStartJobClick = if (isWorker && job.status == JobStatus.ACCEPTED) {
+                            { jobsViewModel.startJob(job.id) }
+                        } else null,
+                        onMarkCompleteClick = if (isWorker && job.status == JobStatus.IN_PROGRESS) {
+                            { jobsViewModel.workerMarkComplete(job.id) }
+                        } else null,
+                        onRateClick = if (job.status == JobStatus.FULLY_COMPLETED) {
+                            { onRateClick(job) }
                         } else null
                     )
                 }
@@ -171,13 +181,20 @@ private fun BookingCard(
     onWorkerClick: (String) -> Unit = {},
     onClientClick: (String) -> Unit = {},
     onCancelClick: (() -> Unit)? = null,
-    onConfirmClick: (() -> Unit)? = null
+    onConfirmClick: (() -> Unit)? = null,
+    onStartJobClick: (() -> Unit)? = null,
+    onMarkCompleteClick: (() -> Unit)? = null,
+    onRateClick: (() -> Unit)? = null
 ) {
+    var showCompleteDialog by remember { mutableStateOf(false) }
+    
     val statusColor = when (job.status) {
         JobStatus.OPEN -> Color(0xFF2196F3)
         JobStatus.ACCEPTED, JobStatus.ASSIGNED -> Color(0xFF9C27B0)
         JobStatus.IN_PROGRESS -> Color(0xFFFF9800)
-        JobStatus.AWAITING_CONFIRMATION -> Color(0xFF00BCD4)
+        JobStatus.AWAITING_CONFIRMATION, JobStatus.WORKER_COMPLETED -> Color(0xFF00BCD4)
+        JobStatus.CLIENT_CONFIRMED -> Color(0xFF00BCD4)
+        JobStatus.FULLY_COMPLETED -> Color(0xFFFFC107) // Amber — rating required
         JobStatus.COMPLETED -> Color(0xFF4CAF50)
         JobStatus.CANCELLED -> Color(0xFF757575)
         else -> Color(0xFF757575)
@@ -187,7 +204,10 @@ private fun BookingCard(
         JobStatus.OPEN -> "Finding Worker"
         JobStatus.ACCEPTED, JobStatus.ASSIGNED -> if (isWorker) "You Accepted" else "Worker Assigned"
         JobStatus.IN_PROGRESS -> "In Progress"
+        JobStatus.WORKER_COMPLETED -> if (isWorker) "Waiting for Client" else "Worker Completed"
         JobStatus.AWAITING_CONFIRMATION -> if (isWorker) "Pending Confirmation" else "Awaiting Your Confirmation"
+        JobStatus.CLIENT_CONFIRMED -> if (isWorker) "Client Confirmed" else "You Confirmed"
+        JobStatus.FULLY_COMPLETED -> "⭐ Rating Required"
         JobStatus.COMPLETED -> "Completed"
         JobStatus.CANCELLED -> "Cancelled"
         else -> "Unknown"
@@ -287,7 +307,7 @@ private fun BookingCard(
             }
             
             // Worker info section - show worker details when job is accepted
-            if (job.status in listOf(JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.COMPLETED) && job.workerId != null) {
+            if (job.status in listOf(JobStatus.ACCEPTED, JobStatus.IN_PROGRESS, JobStatus.WORKER_COMPLETED, JobStatus.AWAITING_CONFIRMATION, JobStatus.COMPLETED, JobStatus.FULLY_COMPLETED) && job.workerId != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -459,6 +479,78 @@ private fun BookingCard(
                 }
             }
             
+            // Worker action: Start Job (ACCEPTED → IN_PROGRESS)
+            onStartJobClick?.let { onStart ->
+                Spacer(modifier = Modifier.height(12.dp))
+                if (onCancelClick == null) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
+                Button(
+                    onClick = onStart,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2196F3)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Start Job", fontWeight = FontWeight.SemiBold)
+                }
+            }
+            
+            // Worker action: Mark Complete (IN_PROGRESS → WORKER_COMPLETED)
+            onMarkCompleteClick?.let { onComplete ->
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = { showCompleteDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Mark as Completed", fontWeight = FontWeight.SemiBold)
+                }
+            }
+            
+            // Worker status: Waiting for client confirmation
+            if (isWorker && job.status == JobStatus.WORKER_COMPLETED) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Surface(
+                    color = Color(0xFFFFF3E0),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.HourglassTop, contentDescription = null, tint = Color(0xFFFF9800), modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Waiting for client to confirm completion", fontSize = 13.sp, color = Color(0xFF795548))
+                    }
+                }
+            }
+            
             // Confirm completion button for AWAITING_CONFIRMATION jobs
             onConfirmClick?.let { onConfirm ->
                 Spacer(modifier = Modifier.height(12.dp))
@@ -484,7 +576,57 @@ private fun BookingCard(
                     Text("Confirm Job Completed", fontWeight = FontWeight.SemiBold)
                 }
             }
+            
+            // Rate Now button for FULLY_COMPLETED jobs
+            onRateClick?.let { onRate ->
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Button(
+                    onClick = onRate,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFFC107)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Rate Now", fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+            }
         }
+    }
+    
+    // Mark complete confirmation dialog
+    if (showCompleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showCompleteDialog = false },
+            title = { Text("Mark Job Complete?") },
+            text = { Text("Are you sure this job is finished? The client will be asked to confirm.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCompleteDialog = false
+                        onMarkCompleteClick?.invoke()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                ) {
+                    Text("Yes, Complete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCompleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

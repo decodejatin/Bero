@@ -35,7 +35,8 @@ fun JobDetailScreen(
     onCancel: () -> Unit = {},
     onBack: () -> Unit = {},
     onCallClient: () -> Unit = {},
-    onNavigate: () -> Unit = {}
+    onNavigate: () -> Unit = {},
+    onRate: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     
@@ -57,7 +58,8 @@ fun JobDetailScreen(
                 onAccept = onAccept,
                 onStart = onStart,
                 onComplete = onComplete,
-                onCancel = onCancel
+                onCancel = onCancel,
+                onRate = onRate
             )
         }
     ) { paddingValues ->
@@ -369,17 +371,18 @@ private fun JobActionBar(
     onAccept: () -> Unit,
     onStart: () -> Unit,
     onComplete: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onRate: () -> Unit = {}
 ) {
     Surface(
         shadowElevation = 8.dp,
         color = MaterialTheme.colorScheme.surface
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             when (status) {
                 JobStatus.OPEN -> {
@@ -400,23 +403,28 @@ private fun JobActionBar(
                         }
                     }
                 }
-                JobStatus.ASSIGNED -> {
-                    OutlinedButton(
-                        onClick = onCancel,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
+                JobStatus.ASSIGNED, JobStatus.ACCEPTED -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("Cancel")
-                    }
-                    Button(
-                        onClick = onStart,
-                        modifier = Modifier.weight(2f)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Start Job")
+                        OutlinedButton(
+                            onClick = onCancel,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Cancel")
+                        }
+                        Button(
+                            onClick = onStart,
+                            modifier = Modifier.weight(2f)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Start Job")
+                        }
                     }
                 }
                 JobStatus.IN_PROGRESS -> {
@@ -432,8 +440,85 @@ private fun JobActionBar(
                         Text("Mark Complete", fontWeight = FontWeight.Bold)
                     }
                 }
+                JobStatus.WORKER_COMPLETED -> {
+                    // Worker waiting for client confirmation
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF3E0)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.HourglassTop,
+                                contentDescription = null,
+                                tint = Color(0xFFFF9800),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    "Completion Submitted",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFE65100)
+                                )
+                                Text(
+                                    "Waiting for client to confirm...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF795548)
+                                )
+                            }
+                        }
+                    }
+                }
+                JobStatus.FULLY_COMPLETED -> {
+                    // Both confirmed — rate required
+                    Button(
+                        onClick = onRate,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(Icons.Default.Star, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Rate Client", fontWeight = FontWeight.Bold)
+                    }
+                }
+                JobStatus.COMPLETED -> {
+                    // Final state — all done
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFE8F5E9)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Job Completed ✓",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
+                }
                 else -> {
-                    // No actions for completed/cancelled jobs
+                    // Cancelled / Disputed — no actions
                 }
             }
         }

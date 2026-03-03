@@ -276,8 +276,12 @@ private fun InfoChip(
 @Composable
 private fun JobStatusBadge(status: JobStatus) {
     val (text, color) = when (status) {
+        JobStatus.ACCEPTED -> "Accepted" to Color(0xFF2196F3)
         JobStatus.ASSIGNED -> "Assigned to you" to Color(0xFF2196F3)
         JobStatus.IN_PROGRESS -> "In Progress" to Color(0xFFFF9800)
+        JobStatus.WORKER_COMPLETED -> "Waiting for Client" to Color(0xFFFF9800)
+        JobStatus.CLIENT_CONFIRMED -> "Client Confirmed" to Color(0xFF009688)
+        JobStatus.FULLY_COMPLETED -> "⭐ Rate Required" to Color(0xFF9C27B0)
         JobStatus.COMPLETED -> "Completed" to Color(0xFF4CAF50)
         JobStatus.CANCELLED -> "Cancelled" to Color(0xFF9E9E9E)
         JobStatus.DISPUTED -> "Disputed" to Color(0xFFF44336)
