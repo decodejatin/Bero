@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package bero.job;
+
+option go_package = "github.com/decodejatin/bero-backend/gen/pb/job;jobpb";
+
+import "google/protobuf/timestamp.proto";
+
+// JobService provides access to job data and assignment operations.
+// Used internally by the Matchmaker Service to fetch open jobs and persist assignments.
+service JobService {
+  // GetJob fetches a single job by ID.
+  rpc GetJob(GetJobRequest) returns (JobResponse);
+
+  // ListOpenJobs returns all unmatched open jobs in a given time window.
+  rpc ListOpenJobs(ListJobsRequest) returns (ListJobsResponse);
+
+  // AssignWorker assigns a worker to a job atomically.
+  rpc AssignWorker(AssignWorkerRequest) returns (AssignWorkerResponse);
+}
+
+// --- Request/Response messages ---
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message ListJobsRequest {
+  // Only return jobs created after this time
+  google.protobuf.Timestamp created_after = 1;
+  // Optional: filter by service category
+  string category = 2;
+  // Optional: maximum number of results
+  int32 limit = 3;
+}
+
+message ListJobsResponse {
+  repeated JobResponse jobs = 1;
+}
+
+message AssignWorkerRequest {
+  string job_id    = 1;
+  string worker_id = 2;
+}
+
+message AssignWorkerResponse {
+  bool   success = 1;
+  string error   = 2;  // non-empty if failed
+}
+
+// JobResponse is the wire representation of a matchable job.
+message JobResponse {
+  string job_id    = 1;
+  string title     = 2;
+  string category  = 3;  // e.g. "PLUMBING", "ELECTRICAL"
+  string status    = 4;  // e.g. "OPEN", "ASSIGNED"
+  string client_id = 5;
+
+  // Location
+  double latitude   = 6;
+  double longitude  = 7;
+  string h3_index   = 8;  // pre-computed H3 cell index (resolution 9)
+  string locality   = 9;
+  string city       = 10;
+
+  // Job details
+  double payment_rupees     = 11;
+  bool   is_urgent          = 12;
+  int32  duration_minutes   = 13;
+  repeated string required_skills = 14;
+
+  google.protobuf.Timestamp scheduled_date = 15;
+  google.protobuf.Timestamp created_at     = 16;
+}

@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package bero.matcher;
+
+option go_package = "github.com/decodejatin/bero-backend/gen/pb/matcher;matcherpb";
+
+import "google/protobuf/timestamp.proto";
+
+// MatcherService exposes the matching engine for internal service consumption.
+// Provides both request/response and server-side streaming APIs.
+service MatcherService {
+  // TriggerRound manually triggers a matching round.
+  rpc TriggerRound(TriggerRequest) returns (TriggerResponse);
+
+  // GetStatus returns current engine state.
+  rpc GetStatus(StatusRequest) returns (StatusResponse);
+
+  // GetConfig returns current matching configuration.
+  rpc GetConfig(ConfigRequest) returns (MatchConfigResponse);
+
+  // UpdateConfig updates matching configuration.
+  rpc UpdateConfig(UpdateConfigRequest) returns (MatchConfigResponse);
+
+  // StreamAssignments is a server-side streaming RPC that emits assignment
+  // events in real-time as the matching engine runs rounds.
+  // Clients (notification service, audit service) subscribe and stay connected.
+  rpc StreamAssignments(StreamRequest) returns (stream AssignmentEvent);
+}
+
+// --- Request/Response messages ---
+
+message TriggerRequest {}
+
+message TriggerResponse {
+  bool    triggered  = 1;
+  int64   window_id  = 2;
+}
+
+message StatusRequest {}
+
+message StatusResponse {
+  bool    running         = 1;
+  int64   total_rounds    = 2;
+  int64   total_matches   = 3;
+  int64   window_id       = 4;
+  string  circuit_state   = 5;  // CLOSED, OPEN, HALF_OPEN
+  double  last_shadow_delta_pct = 6;
+  google.protobuf.Timestamp last_run_at = 7;
+}
+
+message ConfigRequest {}
+
+message UpdateConfigRequest {
+  MatchConfigResponse config = 1;
+}
+
+// MatchConfigResponse mirrors matchmaker.MatchConfig as a proto message.
+message MatchConfigResponse {
+  double alpha_proximity    = 1;
+  double alpha_reputation   = 2;
+  double alpha_skill_match  = 3;
+  double alpha_wait_time    = 4;
+  int32  window_duration_s  = 5;
+  double max_distance_km    = 6;
+  double min_weight_threshold = 7;
+  int32  h3_resolution      = 8;
+  int32  k_nearest_neighbors = 9;
+  bool   enable_pruning     = 10;
+  double lambda_decay       = 11;
+  double switching_cost     = 12;
+  bool   enable_stability   = 13;
+  bool   enable_shadow_mode = 14;
+}
+
+message StreamRequest {
+  // Optional: only stream events for jobs in specific H3 cells
+  repeated string h3_cells = 1;
+}
+
+// AssignmentEvent is emitted by StreamAssignments for each successful match.
+message AssignmentEvent {
+  string worker_id  = 1;
+  string job_id     = 2;
+  double weight     = 3;
+  int64  window_id  = 4;
+  google.protobuf.Timestamp assigned_at = 5;
+}
