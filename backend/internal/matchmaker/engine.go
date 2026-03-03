@@ -171,6 +171,13 @@ func (e *Engine) runMatchingRound(ctx context.Context) {
 			windowID, len(workers), len(jobs), len(assignments))
 	}
 
+	// 3.5 Enforce stability (§3.1.2 — Modified Gale-Shapley)
+	if cfg.EnableStability {
+		assignments = EnforceStability(assignments, workers, jobs, cfg, now)
+		log.Printf("[matchmaker] Window %d: %d stable assignments after Gale-Shapley refinement",
+			windowID, len(assignments))
+	}
+
 	// 4. Execute assignments via callback
 	for _, a := range assignments {
 		if err := e.onAssign(ctx, a); err != nil {
