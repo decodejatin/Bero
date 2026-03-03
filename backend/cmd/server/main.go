@@ -57,7 +57,7 @@ func main() {
 
 	// Initialize services
 	jwtCfg := service.JWTConfig{
-		SecretKey:       getEnvOrDefault("JWT_SECRET", "super-secret-key-change-in-production"),
+		SecretKey:       cfg.JWTSecret, // loaded via SecretProvider (Vault in production)
 		AccessTokenTTL:  24 * time.Hour,
 		RefreshTokenTTL: 7 * 24 * time.Hour,
 	}
