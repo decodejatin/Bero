@@ -711,8 +711,9 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Worker marks a job as completed.
      */
     suspend fun workerMarkComplete(jobId: String): String = withContext(Dispatchers.IO) {
-        val body = """{"worker_id":"${tokenManager.getUserId()}"}"""
-        val response = post("/api/v1/jobs/$jobId/complete-by-worker", body)
+        val userId = tokenManager.getUserId() ?: throw Exception("Not logged in")
+        val body = """{"worker_id":"$userId"}"""
+        val response = post("/jobs/$jobId/complete-by-worker", body)
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -720,8 +721,9 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Client confirms job completion.
      */
     suspend fun clientConfirmComplete(jobId: String): String = withContext(Dispatchers.IO) {
-        val body = """{"client_id":"${tokenManager.getUserId()}"}"""
-        val response = post("/api/v1/jobs/$jobId/confirm-by-client", body)
+        val userId = tokenManager.getUserId() ?: throw Exception("Not logged in")
+        val body = """{"client_id":"$userId"}"""
+        val response = post("/jobs/$jobId/confirm-by-client", body)
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -729,8 +731,9 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Submit mandatory mutual rating after job is fully completed.
      */
     suspend fun submitMutualRating(jobId: String, rating: Int, review: String = ""): String = withContext(Dispatchers.IO) {
-        val body = """{"rater_id":"${tokenManager.getUserId()}","rating":$rating,"review":"$review"}"""
-        val response = post("/api/v1/jobs/$jobId/rate", body)
+        val userId = tokenManager.getUserId() ?: throw Exception("Not logged in")
+        val body = """{"rater_id":"$userId","rating":$rating,"review":"$review"}"""
+        val response = post("/jobs/$jobId/rate", body)
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -738,7 +741,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Get dual-sided completion status for a job.
      */
     suspend fun getCompletionStatus(jobId: String): String = withContext(Dispatchers.IO) {
-        val response = get("/api/v1/jobs/$jobId/completion-status")
+        val response = get("/jobs/$jobId/completion-status")
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -746,7 +749,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Check if worker is blocked by pending rating.
      */
     suspend fun checkWorkerBlocked(workerId: String): String = withContext(Dispatchers.IO) {
-        val response = get("/api/v1/completion/blocked/worker/$workerId")
+        val response = get("/completion/blocked/worker/$workerId")
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -754,7 +757,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Check if client is blocked by pending rating.
      */
     suspend fun checkClientBlocked(clientId: String): String = withContext(Dispatchers.IO) {
-        val response = get("/api/v1/completion/blocked/client/$clientId")
+        val response = get("/completion/blocked/client/$clientId")
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -764,7 +767,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Get current surge multiplier for an H3 hexagon.
      */
     suspend fun getSurgePrice(h3Index: String): String = withContext(Dispatchers.IO) {
-        val response = get("/api/v1/pricing/surge?h3=$h3Index")
+        val response = get("/pricing/surge?h3=$h3Index")
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -772,7 +775,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Get full price quote with surge for a job.
      */
     suspend fun getPriceQuote(jobId: String): String = withContext(Dispatchers.IO) {
-        val response = get("/api/v1/pricing/quote/$jobId")
+        val response = get("/pricing/quote/$jobId")
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -783,7 +786,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      */
     suspend fun submitJobToPipeline(jobId: String): String = withContext(Dispatchers.IO) {
         val body = """{"job_id":"$jobId"}"""
-        val response = post("/api/v1/pipeline/submit", body)
+        val response = post("/pipeline/submit", body)
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -791,7 +794,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Get pipeline status (queue depth, last batch, lifetime stats).
      */
     suspend fun getPipelineStatus(): String = withContext(Dispatchers.IO) {
-        val response = get("/api/v1/pipeline/status")
+        val response = get("/pipeline/status")
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -801,7 +804,7 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Get cancellation/stability status for a user.
      */
     suspend fun getStabilityStatus(userId: String): String = withContext(Dispatchers.IO) {
-        val response = get("/api/v1/stability/user/$userId/status")
+        val response = get("/stability/user/$userId/status")
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -811,8 +814,9 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Decline an assigned job (triggers requeue).
      */
     suspend fun declineJob(jobId: String): String = withContext(Dispatchers.IO) {
-        val body = """{"worker_id":"${tokenManager.getUserId()}"}"""
-        val response = post("/api/v1/matching/decline/$jobId", body)
+        val userId = tokenManager.getUserId() ?: throw Exception("Not logged in")
+        val body = """{"worker_id":"$userId"}"""
+        val response = post("/matching/decline/$jobId", body)
         response.body?.string() ?: throw Exception("Empty response")
     }
     
@@ -820,7 +824,29 @@ class BeroApiClient(private val tokenManager: TokenManager) {
      * Go offline (remove worker location, mark unavailable).
      */
     suspend fun goOffline(): String = withContext(Dispatchers.IO) {
-        val response = delete("/api/v1/workers/location")
+        val response = delete("/workers/location")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    // ==================== Skills ====================
+    
+    /**
+     * Update worker's skills list.
+     */
+    suspend fun updateWorkerSkills(skills: List<String>): String = withContext(Dispatchers.IO) {
+        val skillsJson = skills.joinToString(",") { "\"$it\"" }
+        val body = """{"skills":[$skillsJson]}"""
+        val response = put("/profile/worker/skills", body)
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    // ==================== Rating History ====================
+    
+    /**
+     * Get all ratings given and received by the current user.
+     */
+    suspend fun getMyRatings(): String = withContext(Dispatchers.IO) {
+        val response = get("/profile/ratings")
         response.body?.string() ?: throw Exception("Empty response")
     }
     

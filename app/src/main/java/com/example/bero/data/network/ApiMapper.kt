@@ -88,8 +88,13 @@ object ApiMapper {
             "OPEN" -> JobStatus.OPEN
             "ASSIGNED" -> JobStatus.ACCEPTED
             "IN_PROGRESS" -> JobStatus.IN_PROGRESS
+            "WORKER_COMPLETED" -> JobStatus.WORKER_COMPLETED
+            "CLIENT_CONFIRMED" -> JobStatus.CLIENT_CONFIRMED
+            "FULLY_COMPLETED" -> JobStatus.FULLY_COMPLETED
+            "AWAITING_CONFIRMATION" -> JobStatus.AWAITING_CONFIRMATION
             "COMPLETED" -> JobStatus.COMPLETED
             "CANCELLED" -> JobStatus.CANCELLED
+            "DISPUTED" -> JobStatus.DISPUTED
             else -> JobStatus.OPEN
         }
     }

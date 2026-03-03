@@ -122,9 +122,41 @@ class JobRepository(private val apiClient: BeroApiClient) {
     }
     
     /**
-     * Confirm job completion (client only)
+     * Client confirms job completion (dual-sided completion flow)
+     * Calls POST /jobs/:id/confirm-by-client
      */
     suspend fun confirmJobCompletion(jobId: String): Result<Unit> {
-        return apiClient.confirmJobCompletion(jobId).map { }
+        return try {
+            apiClient.clientConfirmComplete(jobId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Worker marks job complete (dual-sided completion flow)
+     * Calls POST /jobs/:id/complete-by-worker
+     */
+    suspend fun workerMarkComplete(jobId: String): Result<Unit> {
+        return try {
+            apiClient.workerMarkComplete(jobId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Submit mutual rating after job is fully completed
+     * Calls POST /jobs/:id/rate
+     */
+    suspend fun submitMutualRating(jobId: String, rating: Int, review: String = ""): Result<Unit> {
+        return try {
+            apiClient.submitMutualRating(jobId, rating, review)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
