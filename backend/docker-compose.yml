@@ -15,6 +15,16 @@ services:
     networks:
       - bero_network
 
+  nats:
+    image: nats:alpine
+    container_name: bero_nats
+    ports:
+      - "4222:4222"   # Client connections
+      - "8222:8222"   # HTTP monitoring
+    command: ["--http_port", "8222"]
+    networks:
+      - bero_network
+
 networks:
   bero_network:
     driver: bridge

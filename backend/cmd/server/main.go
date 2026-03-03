@@ -15,6 +15,7 @@ import (
 	"github.com/decodejatin/bero-backend/internal/repository"
 	"github.com/decodejatin/bero-backend/internal/service"
 	"github.com/decodejatin/bero-backend/pkg/database"
+	"github.com/decodejatin/bero-backend/pkg/eventbus"
 )
 
 // @title Bero API
@@ -35,6 +36,10 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	log.Println("✅ Database connected")
+
+	// Initialize infrastructure
+	bus := eventbus.NewInMemoryEventBus()
+	log.Printf("📡 Event bus initialized (in-memory, NATS_URL=%s for future swap)", cfg.NATSUrl)
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
@@ -61,7 +66,16 @@ func main() {
 
 	// Matchmaker service
 	matchCfg := matchmaker.DefaultConfig()
+	matchCfg.EnableShadowMode = cfg.EnableShadow
 	matchmakerService := service.NewMatchmakerService(matchmakerRepo, jobRepo, matchCfg)
+
+	// Set up event subscriptions
+	// When an order is placed, the matchmaker can optionally trigger a round
+	bus.Subscribe(eventbus.EventOrderPlaced, func(e eventbus.Event) {
+		log.Printf("[event] Order placed: %s — triggering matchmaker", e.ID)
+		matchmakerService.Trigger()
+	})
+	_ = bus // eventbus is ready for services to publish events
 
 	// Initialize handlers
 	authHandler := api.NewAuthHandler(authService)
@@ -105,6 +119,8 @@ func main() {
 }
 
 func getEnvOrDefault(key, defaultVal string) string {
-	_ = key // TODO: Use os.Getenv(key) when integrating real env vars
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
 	return defaultVal
 }
