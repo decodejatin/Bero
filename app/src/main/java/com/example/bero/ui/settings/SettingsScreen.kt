@@ -33,6 +33,9 @@ fun SettingsScreen(
     onHelpClick: () -> Unit = {},
     onPrivacyPolicyClick: () -> Unit = {},
     onTermsOfServiceClick: () -> Unit = {},
+    onSkillsClick: () -> Unit = {},
+    onRatingHistoryClick: () -> Unit = {},
+    isWorker: Boolean = false,
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val settings by settingsViewModel.settings.collectAsState()
@@ -65,6 +68,27 @@ fun SettingsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // My Account Section
+            item {
+                SettingsSection(title = "My Account") {
+                    if (isWorker) {
+                        SettingsClickItem(
+                            icon = Icons.Default.Build,
+                            title = "My Skills",
+                            subtitle = "Edit your skills and expertise",
+                            onClick = onSkillsClick
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    }
+                    SettingsClickItem(
+                        icon = Icons.Default.StarRate,
+                        title = "Rating History",
+                        subtitle = "View all ratings given and received",
+                        onClick = onRatingHistoryClick
+                    )
+                }
+            }
+            
             // Notifications Section
             item {
                 SettingsSection(title = "Notifications") {

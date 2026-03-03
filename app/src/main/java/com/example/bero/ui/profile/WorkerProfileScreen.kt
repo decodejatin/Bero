@@ -30,6 +30,7 @@ import com.example.bero.ui.theme.*
 
 import com.example.bero.data.network.BeroApiClient
 import com.example.bero.data.network.ProfileDto
+import com.example.bero.data.network.UserStatsDto
 import kotlinx.coroutines.launch
 
 /**
@@ -49,6 +50,7 @@ fun WorkerProfileScreen(
     onHelpClick: () -> Unit = {}
 ) {
     var profileDto by remember { mutableStateOf<ProfileDto?>(null) }
+    var stats by remember { mutableStateOf<UserStatsDto?>(null) }
     
     LaunchedEffect(Unit) {
         if (apiClient != null) {
@@ -56,20 +58,21 @@ fun WorkerProfileScreen(
             if (result.isSuccess) {
                 profileDto = result.getOrNull()
             }
+            apiClient.getUserStats().onSuccess { stats = it }
         }
     }
 
-    val worker = remember(profileDto) { 
+    val worker = remember(profileDto, stats) { 
         WorkerDisplayProfile(
             userId = profileDto?.id ?: "",
             name = profileDto?.full_name ?: "Worker",
             phoneNumber = profileDto?.phone_number ?: "",
-            rating = 4.8, // Placeholder
-            totalJobs = 12, // Placeholder
+            rating = stats?.avg_rating ?: 0.0,
+            totalJobs = (stats?.jobs_completed ?: 0).toInt(),
             skills = listOf(
                 ServiceCategory.PLUMBING,
                 ServiceCategory.ELECTRICAL
-            ), // Placeholder
+            ), // Placeholder until skills API returns typed categories
             isOnline = true,
             tier = WorkerTier.BRONZE,
             isKycVerified = profileDto?.kyc_status == "VERIFIED",
