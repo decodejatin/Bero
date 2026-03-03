@@ -2,9 +2,13 @@ package matchmaker
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/decodejatin/bero-backend/pkg/circuitbreaker"
+	"github.com/decodejatin/bero-backend/pkg/distlock"
 )
 
 // WorkerFetcher is a function that retrieves online workers for matching.
@@ -19,11 +23,13 @@ type AssignmentCallback func(ctx context.Context, assignment Assignment) error
 
 // EngineStatus reports the current state of the matching engine.
 type EngineStatus struct {
-	Running      bool      `json:"running"`
-	LastRunAt    time.Time `json:"last_run_at"`
-	TotalRounds  int64     `json:"total_rounds"`
-	TotalMatches int64     `json:"total_matches"`
-	WindowID     int64     `json:"window_id"`
+	Running         bool      `json:"running"`
+	LastRunAt       time.Time `json:"last_run_at"`
+	TotalRounds     int64     `json:"total_rounds"`
+	TotalMatches    int64     `json:"total_matches"`
+	WindowID        int64     `json:"window_id"`
+	CircuitState    string    `json:"circuit_state"`     // CLOSED, OPEN, HALF_OPEN
+	LastShadowDelta float64   `json:"last_shadow_delta"` // surplus delta from last shadow run
 }
 
 // Engine is the matching engine that runs a batching window loop.
@@ -36,6 +42,10 @@ type Engine struct {
 	fetchWorkers WorkerFetcher
 	fetchJobs    JobFetcher
 	onAssign     AssignmentCallback
+
+	// Infrastructure
+	locker  distlock.DistLock              // distributed locking for assignments
+	breaker *circuitbreaker.CircuitBreaker // circuit breaker for matching
 
 	// Manual trigger channel
 	triggerCh chan struct{}
@@ -51,9 +61,25 @@ func NewEngine(cfg MatchConfig, fetchWorkers WorkerFetcher, fetchJobs JobFetcher
 		fetchWorkers: fetchWorkers,
 		fetchJobs:    fetchJobs,
 		onAssign:     onAssign,
+		locker:       distlock.NewInMemoryDistLock(),
+		breaker:      circuitbreaker.New(circuitbreaker.DefaultConfig()),
 		triggerCh:    make(chan struct{}, 1),
 		resultsCh:    make(chan MatchResult, 100),
 	}
+}
+
+// SetDistLock replaces the default in-memory lock with a production implementation (e.g. Redis Redlock).
+func (e *Engine) SetDistLock(dl distlock.DistLock) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.locker = dl
+}
+
+// SetCircuitBreaker replaces the circuit breaker configuration.
+func (e *Engine) SetCircuitBreaker(cb *circuitbreaker.CircuitBreaker) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.breaker = cb
 }
 
 // Results returns a read-only channel of match results.
@@ -65,7 +91,9 @@ func (e *Engine) Results() <-chan MatchResult {
 func (e *Engine) Status() EngineStatus {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.status
+	s := e.status
+	s.CircuitState = e.breaker.State().String()
+	return s
 }
 
 // UpdateConfig updates the engine configuration.
@@ -157,18 +185,28 @@ func (e *Engine) runMatchingRound(ctx context.Context) {
 
 	var assignments []Assignment
 
-	if cfg.EnablePruning && cfg.KNearestNeighbors > 0 {
-		// 3a. Dynamic Candidate Pruning: use H3 k-ring spatial index
-		// to prune the graph to k-nearest neighbors per job → O(k³) instead of O(n³)
-		assignments = PruneAndMatch(workers, jobs, cfg, now)
-		log.Printf("[matchmaker] Window %d: %d workers × %d jobs → %d assignments (pruned, k=%d)",
-			windowID, len(workers), len(jobs), len(assignments), cfg.KNearestNeighbors)
-	} else {
-		// 3b. Full matrix: classic Hungarian on all W×J pairs
-		weightMatrix := BuildWeightMatrix(workers, jobs, cfg, now)
-		assignments = SolveMaxWeightMatching(weightMatrix, workers, jobs, cfg.MinWeightThreshold)
-		log.Printf("[matchmaker] Window %d: %d workers × %d jobs → %d assignments (full matrix)",
-			windowID, len(workers), len(jobs), len(assignments))
+	// 3. Run matching through circuit breaker
+	cbErr := e.breaker.Execute(func() error {
+		if cfg.EnablePruning && cfg.KNearestNeighbors > 0 {
+			// 3a. Dynamic Candidate Pruning: use H3 k-ring spatial index
+			assignments = PruneAndMatch(workers, jobs, cfg, now)
+			log.Printf("[matchmaker] Window %d: %d workers × %d jobs → %d assignments (pruned, k=%d)",
+				windowID, len(workers), len(jobs), len(assignments), cfg.KNearestNeighbors)
+		} else {
+			// 3b. Full matrix: classic Hungarian on all W×J pairs
+			weightMatrix := BuildWeightMatrix(workers, jobs, cfg, now)
+			assignments = SolveMaxWeightMatching(weightMatrix, workers, jobs, cfg.MinWeightThreshold)
+			log.Printf("[matchmaker] Window %d: %d workers × %d jobs → %d assignments (full matrix)",
+				windowID, len(workers), len(jobs), len(assignments))
+		}
+		return nil
+	})
+
+	if cbErr != nil {
+		// Circuit breaker is OPEN — fallback to simple greedy matching
+		log.Printf("[matchmaker] Window %d: circuit breaker OPEN, falling back to greedy matching", windowID)
+		assignments = greedyMatch(workers, jobs, cfg, now)
+		log.Printf("[matchmaker] Window %d: %d assignments (greedy fallback)", windowID, len(assignments))
 	}
 
 	// 3.5 Enforce stability (§3.1.2 — Modified Gale-Shapley)
@@ -178,11 +216,28 @@ func (e *Engine) runMatchingRound(ctx context.Context) {
 			windowID, len(assignments))
 	}
 
-	// 4. Execute assignments via callback
+	// 3.6 Shadow matching (A/B testing — never affects live assignments)
+	if cfg.EnableShadowMode {
+		shadowResult := RunShadowMatching(workers, jobs, cfg, now, assignments)
+		e.mu.Lock()
+		e.status.LastShadowDelta = shadowResult.Comparison.WeightDeltaPct
+		e.mu.Unlock()
+	}
+
+	// 4. Execute assignments via callback with distributed locking
 	for _, a := range assignments {
+		// Lock the worker to prevent double-booking across concurrent processes
+		lock, lockErr := e.locker.Acquire(ctx, fmt.Sprintf("assign:worker:%s", a.WorkerID), 10*time.Second)
+		if lockErr != nil {
+			log.Printf("[matchmaker] Cannot lock worker %s — skipping (already locked): %v", a.WorkerID, lockErr)
+			continue
+		}
+
 		if err := e.onAssign(ctx, a); err != nil {
 			log.Printf("[matchmaker] Failed to assign worker %s to job %s: %v", a.WorkerID, a.JobID, err)
 		}
+
+		lock.Release(ctx)
 	}
 
 	// 5. Publish result
