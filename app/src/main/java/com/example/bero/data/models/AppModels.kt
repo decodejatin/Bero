@@ -35,18 +35,34 @@ data class Job(
     val estimatedDurationMinutes: Int = 60,
     val requiredSkills: List<String> = emptyList(),
     val workerConfirmed: Boolean = false,
-    val clientConfirmed: Boolean = false
+    val clientConfirmed: Boolean = false,
+    // Completion tracking
+    val workerCompletedAt: Long? = null,
+    val clientConfirmedAt: Long? = null,
+    val workerRated: Boolean = false,
+    val clientRated: Boolean = false,
+    // Dynamic pricing
+    val surgeMultiplier: Double? = null,
+    val surgePrice: Double? = null
 ) {
     // Computed properties for compatibility
     val paymentAmountRupees: Double get() = amountRupees
     val isUrgent: Boolean get() = urgency == JobUrgency.URGENT
+    val displayPrice: Double get() = surgePrice ?: amountRupees
+    val hasSurge: Boolean get() = (surgeMultiplier ?: 1.0) > 1.0
+    val isFullyCompleted: Boolean get() = workerConfirmed && clientConfirmed
+    val needsWorkerRating: Boolean get() = isFullyCompleted && !workerRated
+    val needsClientRating: Boolean get() = isFullyCompleted && !clientRated
 }
 
 enum class JobStatus {
     OPEN,
     ACCEPTED,
-    ASSIGNED, // Alias for ACCEPTED in some screens
+    ASSIGNED,
     IN_PROGRESS,
+    WORKER_COMPLETED,
+    CLIENT_CONFIRMED,
+    FULLY_COMPLETED,
     AWAITING_CONFIRMATION,
     COMPLETED,
     CANCELLED,

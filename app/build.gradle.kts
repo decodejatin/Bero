@@ -89,6 +89,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
+    // Google Play Services — Location (for FusedLocationProviderClient)
+    implementation("com.google.android.gms:play-services-location:21.1.0")
+
     // Material
     implementation(libs.material)
 

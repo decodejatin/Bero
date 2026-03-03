@@ -131,6 +131,13 @@ func (s *jobService) AcceptJob(ctx context.Context, jobID, workerID string) (*do
 		return nil, err
 	}
 
+	// Mark worker as unavailable so other clients don't see them
+	workerProfile, err := s.userRepo.GetWorkerProfile(ctx, workerID)
+	if err == nil && workerProfile != nil {
+		workerProfile.IsAvailable = false
+		_ = s.userRepo.UpdateWorkerProfile(ctx, workerProfile)
+	}
+
 	return s.jobRepo.GetByID(ctx, jobID)
 }
 
@@ -230,5 +237,15 @@ func (s *jobService) CancelJob(ctx context.Context, jobID, userID string) (*doma
 	if err := s.jobRepo.Update(ctx, job); err != nil {
 		return nil, err
 	}
+
+	// Re-enable worker availability if a worker was assigned
+	if job.AssignedWorkerID != nil {
+		workerProfile, err := s.userRepo.GetWorkerProfile(ctx, *job.AssignedWorkerID)
+		if err == nil && workerProfile != nil {
+			workerProfile.IsAvailable = true
+			_ = s.userRepo.UpdateWorkerProfile(ctx, workerProfile)
+		}
+	}
+
 	return job, nil
 }

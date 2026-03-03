@@ -267,3 +267,43 @@ data class SubmitRatingRequest(
     val review: String = "",
     val tags: List<String> = emptyList()
 )
+
+// Location DTOs — powers the geospatial infrastructure layer
+@Serializable
+data class UpdateLocationRequest(
+    val latitude: Double,
+    val longitude: Double
+)
+
+@Serializable
+data class UpdateLocationResponse(
+    val status: String = "",
+    val h3_index: String = ""
+)
+
+@Serializable
+data class SetAvailabilityRequest(
+    val is_available: Boolean
+)
+
+@Serializable
+data class NearbyWorkerDto(
+    val worker_id: String,
+    val name: String = "",
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val distance_meters: Double = 0.0,
+    val h3_index: String = "",
+    val rating_avg: Double = 0.0,
+    val skills: List<String> = emptyList(),
+    val tier: String = "BRONZE"
+)
+
+@Serializable
+data class NearbyWorkersResponse(
+    val workers: List<NearbyWorkerDto> = emptyList(),
+    val query_lat: Double = 0.0,
+    val query_lon: Double = 0.0,
+    val radius_meters: Double = 0.0,
+    val count: Int = 0
+)

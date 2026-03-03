@@ -30,6 +30,18 @@ type JobRepository interface {
 	UpdateCompletion(ctx context.Context, completion *domain.JobCompletion) error
 	GetClientStats(ctx context.Context, clientID string) (jobsPosted int64, totalSpent float64, avgRating float64, err error)
 	GetWorkerStats(ctx context.Context, workerID string) (jobsCompleted int64, totalEarned float64, err error)
+	GetUserRatings(ctx context.Context, userID string) ([]UserRatingRow, error)
+}
+
+// UserRatingRow is a raw result row from the ratings query
+type UserRatingRow struct {
+	JobID     string `gorm:"column:job_id"`
+	JobTitle  string `gorm:"column:job_title"`
+	OtherName string `gorm:"column:other_name"`
+	Rating    int    `gorm:"column:rating_value"`
+	Review    string `gorm:"column:review_text"`
+	IsGiven   bool   `gorm:"column:is_given"`
+	CreatedAt string `gorm:"column:created_at"`
 }
 
 type jobRepository struct {
@@ -183,4 +195,35 @@ func (r *jobRepository) GetWorkerStats(ctx context.Context, workerID string) (in
 		Scan(&totalEarned)
 
 	return jobsCompleted, totalEarned, nil
+}
+
+func (r *jobRepository) GetUserRatings(ctx context.Context, userID string) ([]UserRatingRow, error) {
+	var rows []UserRatingRow
+	query := `
+		SELECT
+			mr.job_id,
+			COALESCE(j.title, '') AS job_title,
+			COALESCE(u.full_name, '') AS other_name,
+			mr.rating_value,
+			COALESCE(mr.review_text, '') AS review_text,
+			CASE WHEN mr.rater_id = ? THEN TRUE ELSE FALSE END AS is_given,
+			mr.created_at::text AS created_at
+		FROM mutual_ratings mr
+		JOIN jobs j ON j.id = mr.job_id
+		LEFT JOIN users u ON u.id = CASE
+			WHEN mr.rater_id = ? THEN mr.ratee_id
+			ELSE mr.rater_id
+		END
+		WHERE mr.rater_id = ? OR mr.ratee_id = ?
+		ORDER BY mr.created_at DESC
+		LIMIT 50
+	`
+	result := r.db.WithContext(ctx).Raw(query, userID, userID, userID, userID).Scan(&rows)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if rows == nil {
+		rows = []UserRatingRow{}
+	}
+	return rows, nil
 }

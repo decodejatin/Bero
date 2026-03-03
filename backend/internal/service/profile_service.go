@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/decodejatin/bero-backend/internal/domain"
 	"github.com/decodejatin/bero-backend/internal/repository"
@@ -13,6 +14,8 @@ type ProfileService interface {
 	UpdateProfile(ctx context.Context, userID string, fullName string, email *string, address *string) (*ProfileResponse, error)
 	SetUserType(ctx context.Context, userID string, userType string) error
 	GetUserStats(ctx context.Context, userID string) (*UserStatsResponse, error)
+	UpdateWorkerSkills(ctx context.Context, userID string, skills []string) error
+	GetMyRatings(ctx context.Context, userID string) ([]RatingHistoryItem, error)
 }
 
 // ProfileResponse returned when getting profile
@@ -33,6 +36,17 @@ type UserStatsResponse struct {
 	TotalSpent    float64 `json:"total_spent"`
 	TotalEarned   float64 `json:"total_earned"`
 	AvgRating     float64 `json:"avg_rating"`
+}
+
+// RatingHistoryItem represents a single rating entry for the user
+type RatingHistoryItem struct {
+	JobID      string `json:"job_id"`
+	JobTitle   string `json:"job_title"`
+	OtherParty string `json:"other_party"`
+	Rating     int    `json:"rating"`
+	Review     string `json:"review"`
+	IsGiven    bool   `json:"is_given"` // true = I gave this, false = I received this
+	CreatedAt  string `json:"created_at"`
 }
 
 type profileService struct {
@@ -162,4 +176,36 @@ func (s *profileService) GetUserStats(ctx context.Context, userID string) (*User
 	}
 
 	return stats, nil
+}
+
+func (s *profileService) UpdateWorkerSkills(ctx context.Context, userID string, skills []string) error {
+	profile, err := s.userRepo.GetWorkerProfile(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if profile == nil {
+		return errors.New("worker profile not found")
+	}
+	profile.Skills = skills
+	return s.userRepo.UpdateWorkerProfile(ctx, profile)
+}
+
+func (s *profileService) GetMyRatings(ctx context.Context, userID string) ([]RatingHistoryItem, error) {
+	rows, err := s.jobRepo.GetUserRatings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]RatingHistoryItem, len(rows))
+	for i, r := range rows {
+		items[i] = RatingHistoryItem{
+			JobID:      r.JobID,
+			JobTitle:   r.JobTitle,
+			OtherParty: r.OtherName,
+			Rating:     r.Rating,
+			Review:     r.Review,
+			IsGiven:    r.IsGiven,
+			CreatedAt:  r.CreatedAt,
+		}
+	}
+	return items, nil
 }

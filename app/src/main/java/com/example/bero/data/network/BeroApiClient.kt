@@ -673,6 +673,157 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         }
     }
     
+    // ==================== LOCATION API ====================
+    
+    /**
+     * Update worker's current location.
+     * Called every 10 seconds by LocationTrackingService.
+     * Returns raw JSON string for LocationRepository to deserialize.
+     */
+    suspend fun updateWorkerLocation(latitude: Double, longitude: Double): String = withContext(Dispatchers.IO) {
+        val request = UpdateLocationRequest(latitude, longitude)
+        val response = put(ApiConfig.Endpoints.WORKER_LOCATION, json.encodeToString(request))
+        response.body?.string() ?: throw Exception("Empty response from location update")
+    }
+    
+    /**
+     * Query nearby available workers around a point.
+     * Returns raw JSON string for LocationRepository to deserialize.
+     */
+    suspend fun getNearbyWorkers(latitude: Double, longitude: Double, radius: Int = 2000): String = withContext(Dispatchers.IO) {
+        val endpoint = "${ApiConfig.Endpoints.NEARBY_WORKERS}?lat=$latitude&lon=$longitude&radius=$radius"
+        val response = get(endpoint)
+        response.body?.string() ?: throw Exception("Empty response from nearby workers query")
+    }
+    
+    /**
+     * Toggle worker availability (online/offline for job matching).
+     */
+    suspend fun setWorkerAvailability(available: Boolean): String = withContext(Dispatchers.IO) {
+        val request = SetAvailabilityRequest(available)
+        val response = put(ApiConfig.Endpoints.WORKER_AVAILABILITY, json.encodeToString(request))
+        response.body?.string() ?: throw Exception("Empty response from availability update")
+    }
+    
+    // ==================== Completion Flow ====================
+    
+    /**
+     * Worker marks a job as completed.
+     */
+    suspend fun workerMarkComplete(jobId: String): String = withContext(Dispatchers.IO) {
+        val body = """{"worker_id":"${tokenManager.getUserId()}"}"""
+        val response = post("/api/v1/jobs/$jobId/complete-by-worker", body)
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Client confirms job completion.
+     */
+    suspend fun clientConfirmComplete(jobId: String): String = withContext(Dispatchers.IO) {
+        val body = """{"client_id":"${tokenManager.getUserId()}"}"""
+        val response = post("/api/v1/jobs/$jobId/confirm-by-client", body)
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Submit mandatory mutual rating after job is fully completed.
+     */
+    suspend fun submitMutualRating(jobId: String, rating: Int, review: String = ""): String = withContext(Dispatchers.IO) {
+        val body = """{"rater_id":"${tokenManager.getUserId()}","rating":$rating,"review":"$review"}"""
+        val response = post("/api/v1/jobs/$jobId/rate", body)
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Get dual-sided completion status for a job.
+     */
+    suspend fun getCompletionStatus(jobId: String): String = withContext(Dispatchers.IO) {
+        val response = get("/api/v1/jobs/$jobId/completion-status")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Check if worker is blocked by pending rating.
+     */
+    suspend fun checkWorkerBlocked(workerId: String): String = withContext(Dispatchers.IO) {
+        val response = get("/api/v1/completion/blocked/worker/$workerId")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Check if client is blocked by pending rating.
+     */
+    suspend fun checkClientBlocked(clientId: String): String = withContext(Dispatchers.IO) {
+        val response = get("/api/v1/completion/blocked/client/$clientId")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    // ==================== Dynamic Pricing ====================
+    
+    /**
+     * Get current surge multiplier for an H3 hexagon.
+     */
+    suspend fun getSurgePrice(h3Index: String): String = withContext(Dispatchers.IO) {
+        val response = get("/api/v1/pricing/surge?h3=$h3Index")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Get full price quote with surge for a job.
+     */
+    suspend fun getPriceQuote(jobId: String): String = withContext(Dispatchers.IO) {
+        val response = get("/api/v1/pricing/quote/$jobId")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    // ==================== Pipeline ====================
+    
+    /**
+     * Submit job to the unified dispatch pipeline (pricing + enqueue).
+     */
+    suspend fun submitJobToPipeline(jobId: String): String = withContext(Dispatchers.IO) {
+        val body = """{"job_id":"$jobId"}"""
+        val response = post("/api/v1/pipeline/submit", body)
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Get pipeline status (queue depth, last batch, lifetime stats).
+     */
+    suspend fun getPipelineStatus(): String = withContext(Dispatchers.IO) {
+        val response = get("/api/v1/pipeline/status")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    // ==================== Stability ====================
+    
+    /**
+     * Get cancellation/stability status for a user.
+     */
+    suspend fun getStabilityStatus(userId: String): String = withContext(Dispatchers.IO) {
+        val response = get("/api/v1/stability/user/$userId/status")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    // ==================== Matching ====================
+    
+    /**
+     * Decline an assigned job (triggers requeue).
+     */
+    suspend fun declineJob(jobId: String): String = withContext(Dispatchers.IO) {
+        val body = """{"worker_id":"${tokenManager.getUserId()}"}"""
+        val response = post("/api/v1/matching/decline/$jobId", body)
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
+    /**
+     * Go offline (remove worker location, mark unavailable).
+     */
+    suspend fun goOffline(): String = withContext(Dispatchers.IO) {
+        val response = delete("/api/v1/workers/location")
+        response.body?.string() ?: throw Exception("Empty response")
+    }
+    
     // ==================== HTTP Helpers ====================
     
     private fun get(endpoint: String): okhttp3.Response {

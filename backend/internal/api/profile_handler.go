@@ -147,3 +147,53 @@ func (h *ProfileHandler) GetUserStats(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, stats)
 }
+
+// UpdateWorkerSkillsRequest is the request body for updating worker skills
+type UpdateWorkerSkillsRequest struct {
+	Skills []string `json:"skills"`
+}
+
+// UpdateWorkerSkills godoc
+// @Summary Update worker skills
+// @Description Updates the authenticated worker's skills list
+// @Tags profile
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body UpdateWorkerSkillsRequest true "Skills list"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /profile/worker/skills [put]
+func (h *ProfileHandler) UpdateWorkerSkills(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+
+	var req UpdateWorkerSkillsRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid request body"})
+	}
+
+	if err := h.profileService.UpdateWorkerSkills(c.Request().Context(), userID, req.Skills); err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to update skills: " + err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, SuccessResponse{Message: "skills updated successfully"})
+}
+
+// GetMyRatings godoc
+// @Summary Get my rating history
+// @Description Returns all ratings given and received by the authenticated user
+// @Tags profile
+// @Security BearerAuth
+// @Success 200 {array} service.RatingHistoryItem
+// @Failure 401 {object} ErrorResponse
+// @Router /profile/ratings [get]
+func (h *ProfileHandler) GetMyRatings(c echo.Context) error {
+	userID := c.Get("user_id").(string)
+
+	ratings, err := h.profileService.GetMyRatings(c.Request().Context(), userID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to get ratings"})
+	}
+
+	return c.JSON(http.StatusOK, ratings)
+}

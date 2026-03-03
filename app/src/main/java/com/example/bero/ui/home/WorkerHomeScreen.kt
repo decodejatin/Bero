@@ -40,6 +40,8 @@ fun WorkerHomeScreen(
     onGoOnlineToggle: (Boolean) -> Unit = {}
 ) {
     var isOnline by remember { mutableStateOf(true) }
+    var isBlockedByRating by remember { mutableStateOf(false) }
+    var blockedJobId by remember { mutableStateOf("") }
     val availableJobs by jobsViewModel.availableJobs.collectAsState()
     val uiState by jobsViewModel.uiState.collectAsState()
     val todayEarnings = remember { 1250.0 }
@@ -49,6 +51,7 @@ fun WorkerHomeScreen(
     // Refresh jobs when screen appears
     LaunchedEffect(Unit) {
         jobsViewModel.loadJobs()
+        // TODO: Call checkWorkerBlocked() and update isBlockedByRating + blockedJobId
     }
     
     LazyColumn(
@@ -57,11 +60,51 @@ fun WorkerHomeScreen(
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 100.dp)
     ) {
+        // Rating block banner
+        if (isBlockedByRating) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Rate Your Last Job",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFFE65100)
+                            )
+                            Text(
+                                "You must rate your completed job before going online",
+                                fontSize = 12.sp,
+                                color = Color(0xFF795548)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Header with greeting and online toggle
         item {
             WorkerHeader(
                 isOnline = isOnline,
                 onToggleOnline = { 
+                    if (isBlockedByRating) return@WorkerHeader // Block toggle
                     isOnline = it
                     onGoOnlineToggle(it)
                 },

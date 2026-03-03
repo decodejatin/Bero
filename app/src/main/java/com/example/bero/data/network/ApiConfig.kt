@@ -65,6 +65,11 @@ object ApiConfig {
         // Ratings
         fun submitRating(jobId: String) = "/jobs/$jobId/rate"
         fun jobRatings(jobId: String) = "/jobs/$jobId/ratings"
+
+        // Location & Geospatial
+        const val WORKER_LOCATION = "/workers/location"
+        const val NEARBY_WORKERS = "/workers/nearby"
+        const val WORKER_AVAILABILITY = "/workers/availability"
     }
     
     // WebSocket URL (replace http with ws)

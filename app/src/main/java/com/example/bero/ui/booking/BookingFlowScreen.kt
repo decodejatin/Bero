@@ -149,12 +149,20 @@ fun BookingFlowScreen(
                         }
                     }
 
+                    var showSurgeSheet by remember { mutableStateOf(false) }
+
                     Button(
                         onClick = {
                             if (currentStep < steps.size - 1) {
                                 currentStep++
                             } else {
-                                onBookingComplete()
+                                // TODO: Actual surge check API call here
+                                val hasSurge = true // Simulated surge Check
+                                if (hasSurge) {
+                                    showSurgeSheet = true
+                                } else {
+                                    onBookingComplete()
+                                }
                             }
                         },
                         modifier = Modifier.weight(if (currentStep > 0) 1f else 2f),
@@ -171,6 +179,21 @@ fun BookingFlowScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                         }
+                    }
+
+                    if (showSurgeSheet) {
+                        SurgePricePreviewSheet(
+                            basePrice = 500.0,
+                            surgeMultiplier = 1.5,
+                            finalPrice = 750.0,
+                            onAccept = {
+                                showSurgeSheet = false
+                                onBookingComplete()
+                            },
+                            onCancel = {
+                                showSurgeSheet = false
+                            }
+                        )
                     }
                 }
             }

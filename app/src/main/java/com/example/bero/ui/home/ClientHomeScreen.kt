@@ -43,6 +43,9 @@ fun ClientHomeScreen(
     // TODO: Replace with API call to fetch featured workers
     val featuredWorkers = remember { emptyList<WorkerDisplayProfile>() }
     val recentBookings = remember { emptyList<Pair<String, String>>() }
+    var isBlockedByRating by remember { mutableStateOf(false) }
+    
+    // TODO: Call checkClientBlocked() and update isBlockedByRating
     
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -51,6 +54,45 @@ fun ClientHomeScreen(
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
+        // Rating block banner
+        if (isBlockedByRating) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Rate Your Worker",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color(0xFFE65100)
+                            )
+                            Text(
+                                "You must rate your last worker before booking again",
+                                fontSize = 12.sp,
+                                color = Color(0xFF795548)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Header with Post Job
         item {
             ClientHeader(onPostJobClick = onPostJobClick)
@@ -90,16 +132,19 @@ fun ClientHomeScreen(
         
         // Floating Action Button for posting a job
         ExtendedFloatingActionButton(
-            onClick = onPostJobClick,
+            onClick = { if (!isBlockedByRating) onPostJobClick() },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
-            containerColor = MaterialTheme.colorScheme.primary,
+            containerColor = if (isBlockedByRating) 
+                MaterialTheme.colorScheme.outline 
+            else 
+                MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Post Job", fontWeight = FontWeight.Bold)
+            Text(if (isBlockedByRating) "Rate First" else "Post Job", fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -8,29 +8,41 @@ import (
 
 // Router sets up all API routes
 type Router struct {
-	echo              *echo.Echo
-	authHandler       *AuthHandler
-	jobHandler        *JobHandler
-	profileHandler    *ProfileHandler
-	chatHandler       *ChatHandler
-	addressHandler    *AddressHandler
-	ratingHandler     *RatingHandler
-	matchmakerHandler *MatchmakerHandler
-	authService       service.AuthService
+	echo                  *echo.Echo
+	authHandler           *AuthHandler
+	jobHandler            *JobHandler
+	profileHandler        *ProfileHandler
+	chatHandler           *ChatHandler
+	addressHandler        *AddressHandler
+	ratingHandler         *RatingHandler
+	locationHandler       *LocationHandler
+	matchingHandler       *MatchingHandler
+	matchingEngineHandler *MatchingEngineHandler
+	stabilityHandler      *StabilityHandler
+	pricingHandler        *PricingHandler
+	orchestratorHandler   *OrchestratorHandler
+	completionHandler     *CompletionHandler
+	authService           service.AuthService
 }
 
 // NewRouter creates a new router
-func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, chatHandler *ChatHandler, addressHandler *AddressHandler, ratingHandler *RatingHandler, matchmakerHandler *MatchmakerHandler, authService service.AuthService) *Router {
+func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, chatHandler *ChatHandler, addressHandler *AddressHandler, ratingHandler *RatingHandler, locationHandler *LocationHandler, matchingHandler *MatchingHandler, matchingEngineHandler *MatchingEngineHandler, stabilityHandler *StabilityHandler, pricingHandler *PricingHandler, orchestratorHandler *OrchestratorHandler, completionHandler *CompletionHandler, authService service.AuthService) *Router {
 	return &Router{
-		echo:              echo.New(),
-		authHandler:       authHandler,
-		jobHandler:        jobHandler,
-		profileHandler:    profileHandler,
-		chatHandler:       chatHandler,
-		addressHandler:    addressHandler,
-		ratingHandler:     ratingHandler,
-		matchmakerHandler: matchmakerHandler,
-		authService:       authService,
+		echo:                  echo.New(),
+		authHandler:           authHandler,
+		jobHandler:            jobHandler,
+		profileHandler:        profileHandler,
+		chatHandler:           chatHandler,
+		addressHandler:        addressHandler,
+		ratingHandler:         ratingHandler,
+		locationHandler:       locationHandler,
+		matchingHandler:       matchingHandler,
+		matchingEngineHandler: matchingEngineHandler,
+		stabilityHandler:      stabilityHandler,
+		pricingHandler:        pricingHandler,
+		orchestratorHandler:   orchestratorHandler,
+		completionHandler:     completionHandler,
+		authService:           authService,
 	}
 }
 
@@ -77,6 +89,8 @@ func (r *Router) Setup() *echo.Echo {
 	profile.POST("/user-type", r.profileHandler.SetUserType)
 	profile.GET("/stats", r.profileHandler.GetUserStats)
 	profile.GET("/:id", r.profileHandler.GetProfileById)
+	profile.PUT("/worker/skills", r.profileHandler.UpdateWorkerSkills)
+	profile.GET("/ratings", r.profileHandler.GetMyRatings)
 
 	// Job routes
 	jobs := protected.Group("/jobs")
@@ -111,13 +125,57 @@ func (r *Router) Setup() *echo.Echo {
 	// Chat WebSocket (auth via query param, not middleware)
 	v1.GET("/chat/ws", r.chatHandler.HandleWebSocket)
 
-	// Matchmaker routes (protected)
-	matchmakerGroup := protected.Group("/matchmaker")
-	matchmakerGroup.POST("/trigger", r.matchmakerHandler.TriggerMatching)
-	matchmakerGroup.GET("/config", r.matchmakerHandler.GetConfig)
-	matchmakerGroup.PUT("/config", r.matchmakerHandler.UpdateConfig)
-	matchmakerGroup.GET("/status", r.matchmakerHandler.GetStatus)
-	matchmakerGroup.GET("/density", r.matchmakerHandler.GetDensity)
+	// Location & geospatial routes
+	workers := protected.Group("/workers")
+	workers.PUT("/location", r.locationHandler.UpdateWorkerLocation)
+	workers.GET("/nearby", r.locationHandler.GetNearbyWorkers)
+	workers.PUT("/availability", r.locationHandler.SetAvailability)
+	workers.DELETE("/location", r.locationHandler.GoOffline)
+
+	// Matching pre-processing routes (feeds into Hungarian algorithm)
+	matching := protected.Group("/matching")
+	matching.GET("/candidates/:jobId", r.matchingHandler.GetCandidates)
+	matching.GET("/weights", r.matchingHandler.GetWeights)
+	matching.PUT("/weights", r.matchingHandler.UpdateWeights)
+	matching.POST("/matrix", r.matchingHandler.BuildMatrix)
+
+	// Matching engine routes (batched Hungarian)
+	matching.POST("/enqueue", r.matchingEngineHandler.EnqueueJob)
+	matching.GET("/queue/status", r.matchingEngineHandler.GetQueueStatus)
+	matching.POST("/batch/trigger", r.matchingEngineHandler.TriggerBatch)
+	matching.POST("/decline/:jobId", r.matchingEngineHandler.DeclineJob)
+
+	// Stability enforcement routes
+	stability := protected.Group("/stability")
+	stability.GET("/stats", r.stabilityHandler.GetStats)
+	stability.GET("/config", r.stabilityHandler.GetConfig)
+	stability.PUT("/config", r.stabilityHandler.UpdateConfig)
+	stability.GET("/user/:id/status", r.stabilityHandler.GetUserStatus)
+	stability.POST("/reassign", r.stabilityHandler.CheckReassign)
+	stability.POST("/utility", r.stabilityHandler.ComputeUtility)
+
+	// Dynamic pricing routes
+	pricing := protected.Group("/pricing")
+	pricing.GET("/surge", r.pricingHandler.GetSurge)
+	pricing.GET("/quote/:jobId", r.pricingHandler.GetPriceQuote)
+	pricing.POST("/apply/:jobId", r.pricingHandler.ApplySurge)
+	pricing.GET("/config", r.pricingHandler.GetConfig)
+	pricing.PUT("/config", r.pricingHandler.UpdateConfig)
+	pricing.GET("/history", r.pricingHandler.GetSurgeHistory)
+
+	// Pipeline orchestrator routes
+	pipeline := protected.Group("/pipeline")
+	pipeline.POST("/submit", r.orchestratorHandler.SubmitJob)
+	pipeline.GET("/status", r.orchestratorHandler.GetStatus)
+
+	// Completion + rating routes
+	protected.POST("/jobs/:id/complete-by-worker", r.completionHandler.WorkerComplete)
+	protected.POST("/jobs/:id/confirm-by-client", r.completionHandler.ClientConfirm)
+	protected.POST("/jobs/:id/rate", r.completionHandler.SubmitRating)
+	protected.GET("/jobs/:id/completion-status", r.completionHandler.GetCompletionStatus)
+	completion := protected.Group("/completion")
+	completion.GET("/blocked/worker/:id", r.completionHandler.CheckWorkerBlocked)
+	completion.GET("/blocked/client/:id", r.completionHandler.CheckClientBlocked)
 
 	return e
 }

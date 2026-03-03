@@ -9,6 +9,9 @@ const (
 	JobStatusOpen                 JobStatus = "OPEN"
 	JobStatusAssigned             JobStatus = "ASSIGNED"
 	JobStatusInProgress           JobStatus = "IN_PROGRESS"
+	JobStatusWorkerCompleted      JobStatus = "WORKER_COMPLETED"
+	JobStatusClientConfirmed      JobStatus = "CLIENT_CONFIRMED"
+	JobStatusFullyCompleted       JobStatus = "FULLY_COMPLETED"
 	JobStatusAwaitingConfirmation JobStatus = "AWAITING_CONFIRMATION"
 	JobStatusCompleted            JobStatus = "COMPLETED"
 	JobStatusCancelled            JobStatus = "CANCELLED"
@@ -47,6 +50,7 @@ type Job struct {
 	Pincode               string          `json:"pincode" gorm:"index"`
 	Latitude              *float64        `json:"latitude,omitempty"`
 	Longitude             *float64        `json:"longitude,omitempty"`
+	H3Index               *string         `json:"h3_index,omitempty"`
 	EstimatedDurationMins int             `json:"estimated_duration_minutes" gorm:"default:60"`
 	PaymentAmountRupees   float64         `json:"payment_amount_rupees" gorm:"not null"`
 	ScheduledDate         time.Time       `json:"scheduled_date" gorm:"not null"`
@@ -59,6 +63,12 @@ type Job struct {
 	AssignedWorkerRating  *float64        `json:"assigned_worker_rating,omitempty" gorm:"-"` // Not stored, populated at runtime
 	WorkerConfirmed       bool            `json:"worker_confirmed" gorm:"default:false"`
 	ClientConfirmed       bool            `json:"client_confirmed" gorm:"default:false"`
+	WorkerCompletedAt     *time.Time      `json:"worker_completed_at,omitempty"`
+	ClientConfirmedAt     *time.Time      `json:"client_confirmed_at,omitempty"`
+	WorkerRated           bool            `json:"worker_rated" gorm:"default:false"`
+	ClientRated           bool            `json:"client_rated" gorm:"default:false"`
+	SurgeMultiplier       *float64        `json:"surge_multiplier,omitempty"`
+	SurgePrice            *float64        `json:"surge_price,omitempty"`
 	CreatedAt             time.Time       `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt             time.Time       `json:"updated_at" gorm:"autoUpdateTime"`
 }

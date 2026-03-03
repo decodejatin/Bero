@@ -48,6 +48,10 @@ type WorkerProfile struct {
 	Skills              []string   `json:"skills" gorm:"serializer:json"`
 	H3IndexRes9         *string    `json:"h3_index_res9,omitempty"`
 	IsOnline            bool       `json:"is_online" gorm:"default:false"`
+	Latitude            *float64   `json:"latitude,omitempty"`
+	Longitude           *float64   `json:"longitude,omitempty"`
+	IsAvailable         bool       `json:"is_available" gorm:"default:false"`
+	H3Index             *string    `json:"h3_index,omitempty"`
 	WalletBalanceMicros int64      `json:"wallet_balance_micros" gorm:"default:0"`
 	RatingAvg           float64    `json:"rating_avg" gorm:"default:0"`
 	RatingCount         int        `json:"rating_count" gorm:"default:0"`

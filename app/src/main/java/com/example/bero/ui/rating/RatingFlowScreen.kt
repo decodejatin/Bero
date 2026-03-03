@@ -26,6 +26,7 @@ import com.example.bero.data.models.WorkerDisplayProfile
 @Composable
 fun RatingFlowScreen(
     worker: WorkerDisplayProfile, // In a real app, this would be passed or fetched
+    isMandatory: Boolean = false,
     onSkip: () -> Unit = {},
     onSubmit: (Float, String, List<String>) -> Unit = { _, _, _ -> }
 ) {
@@ -73,6 +74,22 @@ fun RatingFlowScreen(
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
+
+        if (isMandatory) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.errorContainer
+            ) {
+                Text(
+                    text = "Rating is required to book another job",
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -164,21 +181,24 @@ fun RatingFlowScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedButton(
-                onClick = onSkip,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Skip")
+            if (!isMandatory) {
+                OutlinedButton(
+                    onClick = onSkip,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Skip")
+                }
             }
 
             Button(
                 onClick = { onSubmit(rating, reviewText, selectedTags.toList()) },
                 enabled = rating > 0,
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(if (isMandatory) 1f else 1f)
+                    .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
