@@ -79,10 +79,11 @@ func (s *matchmakerService) fetchWorkers(ctx context.Context) ([]matchmaker.Matc
 		}
 
 		w := matchmaker.MatchableWorker{
-			ID:        p.UserID,
-			Skills:    p.Skills,
-			RatingAvg: p.RatingAvg,
-			IsOnline:  p.IsOnline,
+			ID:         p.UserID,
+			Skills:     p.Skills,
+			RatingAvg:  p.RatingAvg,
+			TrustScore: p.TrustScore, // §6.1: Bayesian Wilson Score replaces raw average
+			IsOnline:   p.IsOnline,
 		}
 
 		// Convert H3 index to lat/lng for proximity calculations
