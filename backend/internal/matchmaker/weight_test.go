@@ -48,8 +48,10 @@ func TestComputeReputation(t *testing.T) {
 	}{
 		{"perfect rating", 5.0, 1.0},
 		{"good rating", 4.0, 0.8},
-		{"no rating", 0.0, 0.0},
-		{"negative", -1.0, 0.0},
+		// §6.1: Unrated workers now get 0.5 (neutral Bayesian prior)
+		// rather than 0.0, so they compete fairly before earning reviews.
+		{"no rating", 0.0, 0.5},
+		{"negative", -1.0, 0.5},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

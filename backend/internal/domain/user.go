@@ -55,8 +55,16 @@ type WorkerProfile struct {
 	LastActiveDate      *time.Time `json:"last_active_date,omitempty"`
 	Tier                WorkerTier `json:"tier" gorm:"default:BRONZE"`
 	VideoBioURL         *string    `json:"video_bio_url,omitempty"`
-	CreatedAt           time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt           time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Bayesian Reputation (§6.1)
+	// TrustScore is the Wilson Score lower confidence bound of the Beta posterior.
+	// It penalizes uncertainty — a new worker scores ~0.5, not 5.0★/5.0★.
+	TrustScore     float64 `json:"trust_score" gorm:"default:0.5"`
+	BayesSuccesses int     `json:"-" gorm:"default:0"` // S: ratings ≥4★
+	BayesFailures  int     `json:"-" gorm:"default:0"` // F: ratings ≤3★
+
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relation
 	User User `json:"user,omitempty" gorm:"foreignKey:UserID"`

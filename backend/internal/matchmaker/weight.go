@@ -10,6 +10,9 @@ import (
 //	w_ij = α1·Proximity_ij + α2·Reputation_i + α3·SkillMatch_ij − α4·WaitTime_j
 func ComputeWeight(worker MatchableWorker, job MatchableJob, cfg MatchConfig, now time.Time) float64 {
 	proximity := computeProximity(worker, job, cfg)
+	// §6.1: Use Bayesian TrustScore instead of raw RatingAvg.
+	// TrustScore is the Wilson Score CI lower bound on Beta(α₀+S, β₀+F),
+	// which penalizes uncertainty and rewards review volume over lucky averages.
 	reputation := computeReputation(worker)
 	skillMatch := computeSkillMatch(worker, job)
 	waitPenalty := computeWaitTime(job, now)
@@ -47,10 +50,18 @@ func computeProximity(worker MatchableWorker, job MatchableJob, cfg MatchConfig)
 	return 1.0 - (dist / cfg.MaxDistanceKm)
 }
 
-// computeReputation normalizes worker rating to [0,1].
+// computeReputation returns a [0,1] reputation score for the worker.
+// §6.1: Prefers the Bayesian TrustScore (Wilson Score CI lower bound) when
+// available (TrustScore > 0), which statistically penalizes low-review-volume
+// workers. Falls back to raw RatingAvg/5.0 for workers without a TrustScore.
 func computeReputation(worker MatchableWorker) float64 {
+	if worker.TrustScore > 0 {
+		// TrustScore is already normalized to [0,1]
+		return math.Min(worker.TrustScore, 1.0)
+	}
+	// Fallback: normalize raw 5-star average
 	if worker.RatingAvg <= 0 {
-		return 0.0
+		return 0.5 // neutral prior for unrated workers
 	}
 	rating := worker.RatingAvg / 5.0
 	if rating > 1.0 {
