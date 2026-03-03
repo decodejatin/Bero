@@ -4,13 +4,14 @@ import "time"
 
 // MatchableWorker represents a worker available for matching.
 type MatchableWorker struct {
-	ID        string
-	Latitude  float64
-	Longitude float64
-	H3Index   string // H3 cell index (resolution 9)
-	Skills    []string
-	RatingAvg float64
-	IsOnline  bool
+	ID           string
+	Latitude     float64
+	Longitude    float64
+	H3Index      string // H3 cell index (resolution 9)
+	Skills       []string
+	RatingAvg    float64
+	IsOnline     bool
+	CurrentJobID string // currently assigned job (empty = unassigned)
 }
 
 // MatchableJob represents a job awaiting assignment.
@@ -61,6 +62,14 @@ type MatchConfig struct {
 
 	// Enable dynamic candidate pruning (set false to use full matrix)
 	EnablePruning bool `json:"enable_pruning"`
+
+	// Stability parameters (§3.1.2 — Modified Gale-Shapley)
+	LambdaDecay     float64 `json:"lambda_decay"`     // λ — time decay rate for utility function U(t)
+	SwitchingCost   float64 `json:"switching_cost"`   // C_switch — cost to switch assignments
+	EnableStability bool    `json:"enable_stability"` // enable stability enforcement post-matching
+
+	// Operational patterns
+	EnableShadowMode bool `json:"enable_shadow_mode"` // run shadow matching for A/B testing
 }
 
 // DefaultConfig returns sensible default configuration.
@@ -76,5 +85,9 @@ func DefaultConfig() MatchConfig {
 		H3Resolution:          9,
 		KNearestNeighbors:     10,
 		EnablePruning:         true,
+		LambdaDecay:           0.05,
+		SwitchingCost:         0.15,
+		EnableStability:       true,
+		EnableShadowMode:      false, // opt-in: set true to enable shadow A/B testing
 	}
 }

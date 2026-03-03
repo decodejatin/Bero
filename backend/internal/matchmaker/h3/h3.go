@@ -275,3 +275,31 @@ func normalizeLng(lng float64) float64 {
 	}
 	return lng
 }
+
+// parseCell extracts resolution, row, col from a cell string "res_row_col".
+// Returns (-1, 0, 0) if the cell is invalid.
+func parseCell(cell Cell) (int, int, int) {
+	parts := strings.Split(string(cell), "_")
+	if len(parts) != 3 {
+		return -1, 0, 0
+	}
+	res, err1 := strconv.Atoi(parts[0])
+	row, err2 := strconv.Atoi(parts[1])
+	col, err3 := strconv.Atoi(parts[2])
+	if err1 != nil || err2 != nil || err3 != nil {
+		return -1, 0, 0
+	}
+	return res, row, col
+}
+
+// encodeCell creates a cell string from resolution, row, col.
+func encodeCell(resolution, row, col int) Cell {
+	return Cell(fmt.Sprintf("%d_%d_%d", resolution, row, col))
+}
+
+// CellResolution returns the resolution of a cell index.
+// Returns -1 if the cell is invalid.
+func CellResolution(cell Cell) int {
+	res, _, _ := parseCell(cell)
+	return res
+}

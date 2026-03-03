@@ -4,18 +4,26 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/decodejatin/bero-backend/config"
+	jobpb "github.com/decodejatin/bero-backend/gen/pb/job"
+	matcherpb "github.com/decodejatin/bero-backend/gen/pb/matcher"
+	userpb "github.com/decodejatin/bero-backend/gen/pb/user"
 	"github.com/decodejatin/bero-backend/internal/api"
+	grpcserver "github.com/decodejatin/bero-backend/internal/grpc/server"
 	"github.com/decodejatin/bero-backend/internal/matching"
+	"github.com/decodejatin/bero-backend/internal/matchmaker"
 	"github.com/decodejatin/bero-backend/internal/orchestrator"
 	"github.com/decodejatin/bero-backend/internal/repository"
 	"github.com/decodejatin/bero-backend/internal/service"
 	"github.com/decodejatin/bero-backend/pkg/database"
+	"github.com/decodejatin/bero-backend/pkg/eventbus"
+	"google.golang.org/grpc"
 )
 
 // @title Bero API
@@ -36,6 +44,10 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	log.Println("✅ Database connected")
+
+	// Initialize infrastructure
+	bus := eventbus.NewInMemoryEventBus()
+	log.Printf("📡 Event bus initialized (in-memory, NATS_URL=%s for future swap)", cfg.NATSUrl)
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
@@ -95,7 +107,45 @@ func main() {
 	completionRatingRepo := repository.NewCompletionRatingRepository(db)
 	completionService := service.NewCompletionService(jobRepo, userRepo, locationRepo, completionRatingRepo)
 
-	// Initialize handlers
+	// Matchmaker service
+	matchmakerRepo := repository.NewMatchmakerRepository(db)
+	matchCfg := matchmaker.DefaultConfig()
+	matchCfg.EnableShadowMode = cfg.EnableShadow
+	matchmakerService := service.NewMatchmakerService(matchmakerRepo, jobRepo, matchCfg)
+
+	// Set up event subscriptions
+	bus.Subscribe(eventbus.EventOrderPlaced, func(e eventbus.Event) {
+		log.Printf("[event] Order placed: %s — triggering matchmaker", e.ID)
+		matchmakerService.Trigger()
+	})
+	_ = bus
+
+	// ── gRPC Server ───────────────────────────────────────────────────────────
+	grpcAddr := fmt.Sprintf(":%s", cfg.GRPCPort)
+	lis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		log.Fatalf("Failed to listen on gRPC port %s: %v", cfg.GRPCPort, err)
+	}
+
+	grpcSrv := grpc.NewServer()
+
+	// Register all gRPC services
+	userpb.RegisterUserServiceServer(grpcSrv, grpcserver.NewUserServer(userRepo, matchmakerRepo))
+	jobpb.RegisterJobServiceServer(grpcSrv, grpcserver.NewJobServer(jobRepo))
+	// MatcherServer needs direct access to the engine — extract it via a helper
+	matcherpb.RegisterMatcherServiceServer(grpcSrv, grpcserver.NewMatcherServer(
+		matchmakerService.GetEngine(),
+	))
+
+	go func() {
+		log.Printf("⚡ gRPC server listening on %s (binary Protobuf)", grpcAddr)
+		if err := grpcSrv.Serve(lis); err != nil {
+			log.Printf("gRPC server stopped: %v", err)
+		}
+	}()
+	// ─────────────────────────────────────────────────────────────────────────
+
+	// Initialize HTTP handlers
 	authHandler := api.NewAuthHandler(authService)
 	jobHandler := api.NewJobHandler(jobService)
 	profileHandler := api.NewProfileHandler(profileService)
@@ -120,8 +170,7 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%s", cfg.ServerPort)
-	log.Printf("🚀 Server starting on %s", addr)
-	log.Println("📚 API Documentation: http://localhost" + addr + "/health")
+	log.Printf("🚀 HTTP server starting on %s", addr)
 
 	// Graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -132,8 +181,9 @@ func main() {
 		<-sigCh
 		log.Println("🛑 Shutting down...")
 		cancel()
+		grpcSrv.GracefulStop()
 		if err := e.Close(); err != nil {
-			log.Printf("Server shutdown error: %v", err)
+			log.Printf("HTTP server shutdown error: %v", err)
 		}
 	}()
 
@@ -143,6 +193,8 @@ func main() {
 }
 
 func getEnvOrDefault(key, defaultVal string) string {
-	_ = key // TODO: Use os.Getenv(key) when integrating real env vars
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
 	return defaultVal
 }

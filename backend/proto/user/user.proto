@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package bero.user;
+
+option go_package = "github.com/decodejatin/bero-backend/gen/pb/user;userpb";
+
+import "google/protobuf/timestamp.proto";
+
+// UserService provides access to user and worker profile data.
+// Used internally by the Matchmaker Service to fetch online workers.
+service UserService {
+  // GetWorkerProfile fetches a single worker profile by user ID.
+  rpc GetWorkerProfile(GetWorkerRequest) returns (WorkerProfileResponse);
+
+  // ListOnlineWorkers returns all workers currently marked as online.
+  rpc ListOnlineWorkers(ListWorkersRequest) returns (ListWorkersResponse);
+}
+
+// --- Request/Response messages ---
+
+message GetWorkerRequest {
+  string user_id = 1;
+}
+
+message ListWorkersRequest {
+  // Optional: filter by H3 cell indices (e.g., a k-ring around a job)
+  repeated string h3_cells = 1;
+  // Optional: filter by skill category
+  string category = 2;
+}
+
+message ListWorkersResponse {
+  repeated WorkerProfileResponse workers = 1;
+}
+
+// WorkerProfileResponse is the wire representation of a matchable worker.
+message WorkerProfileResponse {
+  string user_id      = 1;
+  string phone_number = 2;
+  string full_name    = 3;
+
+  repeated string skills  = 4;
+  string h3_index_res9    = 5;
+  bool   is_online        = 6;
+  double rating_avg       = 7;
+  int64  wallet_micros    = 8;  // negative = overdrawn
+  string tier             = 9;  // BRONZE, SILVER, GOLD
+  int32  rating_count     = 10;
+
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
