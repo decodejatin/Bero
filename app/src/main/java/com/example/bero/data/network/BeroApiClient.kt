@@ -850,6 +850,74 @@ class BeroApiClient(private val tokenManager: TokenManager) {
         response.body?.string() ?: throw Exception("Empty response")
     }
     
+    // ==================== LEGAL API ====================
+    
+    /**
+     * Get all active legal documents.
+     */
+    suspend fun getLegalDocuments(): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = get("/legal/documents")
+            if (response.isSuccessful) {
+                Result.success(response.body?.string() ?: "{}")
+            } else {
+                Result.failure(Exception("Failed to get legal documents: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Submit acceptance of legal documents.
+     */
+    suspend fun acceptLegalDocuments(body: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = post("/legal/accept", body)
+            if (response.isSuccessful) {
+                Result.success(response.body?.string() ?: "{}")
+            } else {
+                val errorBody = response.body?.string() ?: ""
+                Result.failure(Exception("Failed to accept documents: $errorBody"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Submit acceptance of worker responsibility policy.
+     */
+    suspend fun acceptWorkerPolicy(body: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = post("/legal/accept-worker-policy", body)
+            if (response.isSuccessful) {
+                Result.success(response.body?.string() ?: "{}")
+            } else {
+                val errorBody = response.body?.string() ?: ""
+                Result.failure(Exception("Failed to accept worker policy: $errorBody"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Check legal compliance status.
+     */
+    suspend fun getLegalComplianceStatus(): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = get("/legal/compliance")
+            if (response.isSuccessful) {
+                Result.success(response.body?.string() ?: "{}")
+            } else {
+                Result.failure(Exception("Failed to check compliance: ${response.code}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     // ==================== HTTP Helpers ====================
     
     private fun get(endpoint: String): okhttp3.Response {

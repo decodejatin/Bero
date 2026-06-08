@@ -227,6 +227,11 @@ data class SendChatMessageRequest(
     val message_type: String = "text"
 )
 
+@Serializable
+data class UnreadCountResponse(
+    val unread_count: Long = 0
+)
+
 // Stats DTOs
 @Serializable
 data class UserStatsDto(

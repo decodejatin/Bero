@@ -52,6 +52,8 @@ import com.example.bero.ui.settings.SettingsScreen
 import com.example.bero.ui.settings.NotificationPreferencesScreen
 import com.example.bero.ui.settings.PrivacyPolicyScreen
 import com.example.bero.ui.settings.TermsOfServiceScreen
+import com.example.bero.ui.settings.LegalPoliciesScreen
+import com.example.bero.ui.settings.PdfViewerScreen
 import com.example.bero.ui.help.HelpSupportScreen
 import com.example.bero.ui.search.SearchScreen
 import com.example.bero.ui.earnings.EarningsAnalyticsScreen
@@ -66,6 +68,7 @@ import com.example.bero.ui.settings.SettingsViewModel
 import com.example.bero.ui.home.WorkerHomeScreen
 import com.example.bero.ui.home.ClientHomeScreen
 import com.example.bero.ui.job.CreateJobScreen
+import com.example.bero.ui.auth.LegalAcceptanceViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,6 +112,8 @@ sealed class Screen {
     object CreateJob : Screen()
     object PrivacyPolicy : Screen()
     object TermsOfService : Screen()
+    object LegalPolicies : Screen()
+    data class PdfViewer(val slug: String, val title: String) : Screen()
     data class Chat(val conversationId: String, val participantName: String) : Screen()
     object SavedAddresses : Screen()
 }
@@ -172,7 +177,8 @@ fun BeroApp(settingsViewModel: SettingsViewModel = viewModel()) {
             RoleSelectionScreen(
                 onRoleSelected = { role -> authViewModel.selectRole(role) },
                 isLoading = uiState.isLoading,
-                error = uiState.error
+                error = uiState.error,
+                onDocumentClick = { _, _ -> } // Can't navigate during role selection pre-auth
             )
         }
         authState is AuthState.RequiresProfileCreation -> {
@@ -270,8 +276,20 @@ fun MainAppScreen(
                         val bookingsIdx = if (userType == UserType.WORKER) 3 else 2
                         val profileIdx = if (userType == UserType.WORKER) 4 else 3
 
+                        val unreadCount by chatViewModel.unreadCount.collectAsState()
+
                         NavigationBarItem(
-                            icon = { Icon(Icons.Default.Chat, contentDescription = "Chat") },
+                            icon = {
+                                BadgedBox(badge = {
+                                    if (unreadCount > 0) {
+                                        Badge {
+                                            Text(if (unreadCount > 9) "9+" else unreadCount.toString())
+                                        }
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Chat, contentDescription = "Chat")
+                                }
+                            },
                             label = { Text("Chat", fontSize = 11.sp) },
                             selected = selectedTab == chatIdx,
                             onClick = { selectedTab = chatIdx },
@@ -381,7 +399,16 @@ fun MainAppScreen(
            JobDetailsScreen(
                job = screen.job,
                onBackClick = onBack,
-               onChatClick = { /* Go to Chat */ }
+               onChatClick = { participantId ->
+                   scope.launch {
+                       apiClient.getOrCreateConversation(participantId, screen.job.id).fold(
+                           onSuccess = { conv ->
+                               currentScreen = Screen.Chat(conv.id, conv.participant_name)
+                           },
+                           onFailure = { /* Silent fail */ }
+                       )
+                   }
+               }
            )
         }
         
@@ -392,6 +419,7 @@ fun MainAppScreen(
                 onHelpClick = { currentScreen = Screen.HelpSupport },
                 onPrivacyPolicyClick = { currentScreen = Screen.PrivacyPolicy },
                 onTermsOfServiceClick = { currentScreen = Screen.TermsOfService },
+                onLegalPoliciesClick = { currentScreen = Screen.LegalPolicies },
                 onSkillsClick = { currentScreen = Screen.SkillManagement },
                 onRatingHistoryClick = { currentScreen = Screen.RatingHistory },
                 isWorker = userType == UserType.WORKER,
@@ -417,6 +445,25 @@ fun MainAppScreen(
         
         is Screen.TermsOfService -> {
             TermsOfServiceScreen(onBackClick = { currentScreen = Screen.Settings })
+        }
+        
+        is Screen.LegalPolicies -> {
+            LegalPoliciesScreen(
+                onBackClick = { currentScreen = Screen.Settings },
+                onDocumentClick = { slug, title ->
+                    currentScreen = Screen.PdfViewer(slug, title)
+                },
+                isWorker = userType == UserType.WORKER
+            )
+        }
+        
+        is Screen.PdfViewer -> {
+            val pdfScreen = screen as Screen.PdfViewer
+            PdfViewerScreen(
+                slug = pdfScreen.slug,
+                title = pdfScreen.title,
+                onBackClick = { currentScreen = Screen.LegalPolicies }
+            )
         }
         
         is Screen.HelpSupport -> {
@@ -464,7 +511,16 @@ fun MainAppScreen(
                 apiClient = apiClient,
                 onBackClick = onBack,
                 onBookClick = { worker -> currentScreen = Screen.BookingFlow(worker) },
-                onChatClick = { /* Navigate to chat */ },
+                onChatClick = { workerId ->
+                    scope.launch {
+                        apiClient.getOrCreateConversation(workerId).fold(
+                            onSuccess = { conv ->
+                                currentScreen = Screen.Chat(conv.id, conv.participant_name)
+                            },
+                            onFailure = { /* Silent fail */ }
+                        )
+                    }
+                },
                 onViewBookingsClick = {
                     // Navigate to Bookings tab
                     currentScreen = Screen.Main

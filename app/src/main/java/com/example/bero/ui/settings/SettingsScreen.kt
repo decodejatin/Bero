@@ -33,6 +33,7 @@ fun SettingsScreen(
     onHelpClick: () -> Unit = {},
     onPrivacyPolicyClick: () -> Unit = {},
     onTermsOfServiceClick: () -> Unit = {},
+    onLegalPoliciesClick: () -> Unit = {},
     onSkillsClick: () -> Unit = {},
     onRatingHistoryClick: () -> Unit = {},
     isWorker: Boolean = false,
@@ -129,9 +130,9 @@ fun SettingsScreen(
                 }
             }
             
-            // Privacy Section
+            // Privacy & Legal Section
             item {
-                SettingsSection(title = "Privacy & Security") {
+                SettingsSection(title = "Privacy & Legal") {
                     SettingsSwitchItem(
                         icon = Icons.Default.LocationOn,
                         title = "Location Access",
@@ -141,17 +142,10 @@ fun SettingsScreen(
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SettingsClickItem(
-                        icon = Icons.Default.Security,
-                        title = "Privacy Policy",
-                        subtitle = "View our privacy policy",
-                        onClick = onPrivacyPolicyClick
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SettingsClickItem(
-                        icon = Icons.Default.Description,
-                        title = "Terms of Service",
-                        subtitle = "View terms and conditions",
-                        onClick = onTermsOfServiceClick
+                        icon = Icons.Default.Gavel,
+                        title = "Legal & Policies",
+                        subtitle = "Terms, privacy, disclaimers & more",
+                        onClick = onLegalPoliciesClick
                     )
                 }
             }
