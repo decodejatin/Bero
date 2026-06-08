@@ -25,6 +25,21 @@ services:
     networks:
       - bero_network
 
+  vault:
+    image: hashicorp/vault:latest
+    container_name: bero_vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - bero_network
+    # In production: use vault server -config=/vault/config/config.hcl
+    # with auto-unseal, raft storage, and TLS enabled.
+
 networks:
   bero_network:
     driver: bridge

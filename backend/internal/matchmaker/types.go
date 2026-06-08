@@ -71,6 +71,15 @@ type MatchConfig struct {
 
 	// Operational patterns
 	EnableShadowMode bool `json:"enable_shadow_mode"` // run shadow matching for A/B testing
+
+	// Backpressure & rate limiting (the "Safety Valve")
+	EnableRateLimiting     bool    `json:"enable_rate_limiting"`      // enable Token Bucket admission gate
+	RateLimitPerSecond     float64 `json:"rate_limit_per_second"`     // token refill rate (default 2.0)
+	RateLimitBurst         int     `json:"rate_limit_burst"`          // burst capacity (default 5)
+	HighPressureQueueDepth int     `json:"high_pressure_queue_depth"` // trigger HIGH tier (default 10)
+	CritPressureQueueDepth int     `json:"crit_pressure_queue_depth"` // trigger CRITICAL tier (default 50)
+	HighPressureLatencyMs  int64   `json:"high_pressure_latency_ms"`  // EWMA latency for HIGH (default 500)
+	CritPressureLatencyMs  int64   `json:"crit_pressure_latency_ms"`  // EWMA latency for CRITICAL (default 2000)
 }
 
 // DefaultConfig returns sensible default configuration.
@@ -90,5 +99,14 @@ func DefaultConfig() MatchConfig {
 		SwitchingCost:         0.15,
 		EnableStability:       true,
 		EnableShadowMode:      false, // opt-in: set true to enable shadow A/B testing
+
+		// Backpressure defaults — the Safety Valve
+		EnableRateLimiting:     true,
+		RateLimitPerSecond:     2.0, // 2 matching rounds/sec max sustained
+		RateLimitBurst:         5,   // absorb short spikes of 5 triggers
+		HighPressureQueueDepth: 10,
+		CritPressureQueueDepth: 50,
+		HighPressureLatencyMs:  500,
+		CritPressureLatencyMs:  2000,
 	}
 }
