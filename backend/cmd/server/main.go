@@ -160,8 +160,13 @@ func main() {
 	orchestratorHandler := api.NewOrchestratorHandler(orch)
 	completionHandler := api.NewCompletionHandler(completionService)
 
+	// Legal documents
+	legalRepo := repository.NewLegalRepository(db)
+	legalService := service.NewLegalService(legalRepo)
+	legalHandler := api.NewLegalHandler(legalService)
+
 	// Initialize router
-	router := api.NewRouter(authHandler, jobHandler, profileHandler, chatHandler, addressHandler, ratingHandler, locationHandler, matchingHandler, matchingEngineHandler, stabilityHandler, pricingHandler, orchestratorHandler, completionHandler, authService)
+	router := api.NewRouter(authHandler, jobHandler, profileHandler, chatHandler, addressHandler, ratingHandler, locationHandler, matchingHandler, matchingEngineHandler, stabilityHandler, pricingHandler, orchestratorHandler, completionHandler, legalHandler, legalService, authService)
 	e := router.Setup()
 
 	// Start batch queue goroutine

@@ -247,7 +247,7 @@ func (hub *WebSocketHub) Run() {
 	}
 }
 
-// BroadcastToConversation sends a message to connected WebSocket clients
+// BroadcastToConversation sends a message to conversation participants who are connected
 func (hub *WebSocketHub) BroadcastToConversation(conversationID, senderID string, msg interface{}) {
 	hub.mu.RLock()
 	defer hub.mu.RUnlock()
@@ -263,6 +263,8 @@ func (hub *WebSocketHub) BroadcastToConversation(conversationID, senderID string
 		return
 	}
 
+	// Send only to the OTHER user in the conversation (not the sender)
+	// Since conversations are between 2 people, just skip the sender
 	for userID, client := range hub.clients {
 		if userID != senderID {
 			select {
@@ -270,6 +272,19 @@ func (hub *WebSocketHub) BroadcastToConversation(conversationID, senderID string
 			default:
 				// Client buffer full, skip
 			}
+		}
+	}
+}
+
+// SendToUser sends a message directly to a specific user
+func (hub *WebSocketHub) SendToUser(userID string, data []byte) {
+	hub.mu.RLock()
+	defer hub.mu.RUnlock()
+
+	if client, ok := hub.clients[userID]; ok {
+		select {
+		case client.send <- data:
+		default:
 		}
 	}
 }

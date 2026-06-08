@@ -22,11 +22,13 @@ type Router struct {
 	pricingHandler        *PricingHandler
 	orchestratorHandler   *OrchestratorHandler
 	completionHandler     *CompletionHandler
+	legalHandler          *LegalHandler
 	authService           service.AuthService
+	legalService          *service.LegalService
 }
 
 // NewRouter creates a new router
-func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, chatHandler *ChatHandler, addressHandler *AddressHandler, ratingHandler *RatingHandler, locationHandler *LocationHandler, matchingHandler *MatchingHandler, matchingEngineHandler *MatchingEngineHandler, stabilityHandler *StabilityHandler, pricingHandler *PricingHandler, orchestratorHandler *OrchestratorHandler, completionHandler *CompletionHandler, authService service.AuthService) *Router {
+func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler *ProfileHandler, chatHandler *ChatHandler, addressHandler *AddressHandler, ratingHandler *RatingHandler, locationHandler *LocationHandler, matchingHandler *MatchingHandler, matchingEngineHandler *MatchingEngineHandler, stabilityHandler *StabilityHandler, pricingHandler *PricingHandler, orchestratorHandler *OrchestratorHandler, completionHandler *CompletionHandler, legalHandler *LegalHandler, legalService *service.LegalService, authService service.AuthService) *Router {
 	return &Router{
 		echo:                  echo.New(),
 		authHandler:           authHandler,
@@ -42,7 +44,9 @@ func NewRouter(authHandler *AuthHandler, jobHandler *JobHandler, profileHandler 
 		pricingHandler:        pricingHandler,
 		orchestratorHandler:   orchestratorHandler,
 		completionHandler:     completionHandler,
+		legalHandler:          legalHandler,
 		authService:           authService,
+		legalService:          legalService,
 	}
 }
 
@@ -92,9 +96,10 @@ func (r *Router) Setup() *echo.Echo {
 	profile.PUT("/worker/skills", r.profileHandler.UpdateWorkerSkills)
 	profile.GET("/ratings", r.profileHandler.GetMyRatings)
 
-	// Job routes
+	// Job routes (with legal compliance check on job creation)
 	jobs := protected.Group("/jobs")
-	jobs.POST("", r.jobHandler.CreateJob)
+	legalCheck := LegalComplianceMiddleware(r.legalService)
+	jobs.POST("", r.jobHandler.CreateJob, legalCheck)
 	jobs.GET("", r.jobHandler.GetAvailableJobs)
 	jobs.GET("/my", r.jobHandler.GetMyJobs)
 	jobs.GET("/:id", r.jobHandler.GetJob)
@@ -129,7 +134,7 @@ func (r *Router) Setup() *echo.Echo {
 	workers := protected.Group("/workers")
 	workers.PUT("/location", r.locationHandler.UpdateWorkerLocation)
 	workers.GET("/nearby", r.locationHandler.GetNearbyWorkers)
-	workers.PUT("/availability", r.locationHandler.SetAvailability)
+	workers.PUT("/availability", r.locationHandler.SetAvailability, LegalComplianceMiddleware(r.legalService))
 	workers.DELETE("/location", r.locationHandler.GoOffline)
 
 	// Matching pre-processing routes (feeds into Hungarian algorithm)
@@ -176,6 +181,22 @@ func (r *Router) Setup() *echo.Echo {
 	completion := protected.Group("/completion")
 	completion.GET("/blocked/worker/:id", r.completionHandler.CheckWorkerBlocked)
 	completion.GET("/blocked/client/:id", r.completionHandler.CheckClientBlocked)
+
+	// Legal documents routes (public — document list)
+	v1.GET("/legal/documents", r.legalHandler.GetDocuments)
+	v1.GET("/legal/documents/:slug", r.legalHandler.GetDocument)
+
+	// Legal routes (authenticated)
+	legal := protected.Group("/legal")
+	legal.POST("/accept", r.legalHandler.AcceptDocuments)
+	legal.POST("/accept-worker-policy", r.legalHandler.AcceptWorkerPolicy)
+	legal.GET("/compliance", r.legalHandler.GetComplianceStatus)
+
+	// Admin legal routes (authenticated — add admin middleware in production)
+	admin := protected.Group("/admin")
+	admin.PUT("/legal/documents/:slug", r.legalHandler.AdminUpdateDocument)
+	admin.POST("/legal/documents/:slug/force-reaccept", r.legalHandler.AdminForceReAccept)
+	admin.GET("/legal/acceptance-logs", r.legalHandler.AdminGetAcceptanceLogs)
 
 	return e
 }
