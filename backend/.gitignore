@@ -34,3 +34,14 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Ignore local build logs and status dumps
+build_*.txt
+*_status.txt
+*_status_full.txt
+all_status.txt
+full_build_log.txt
+build_luxury.txt
+build_output.txt
+build_result.txt
+.kotlin/
