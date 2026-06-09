@@ -20,5 +20,6 @@ WHERE NOT EXISTS (SELECT 1 FROM matching_weights LIMIT 1);
 
 -- 3. Index on worker_profiles.skills for JSONB overlap queries
 -- Used by candidate filtering: skills::jsonb ?| ARRAY[...]
+ALTER TABLE worker_profiles ALTER COLUMN skills TYPE jsonb USING skills::jsonb;
 CREATE INDEX IF NOT EXISTS idx_worker_profiles_skills_gin
     ON worker_profiles USING GIN (skills);

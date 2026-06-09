@@ -1,20 +1,6 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgis/postgis:15-3.4-alpine
-    container_name: bero_postgres
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
-      POSTGRES_DB: ${DB_NAME:-bero}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - bero_network
-
   nats:
     image: nats:alpine
     container_name: bero_nats
@@ -45,7 +31,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
 # Note: Add a "backend" service entry here when containerising the Go app.
 # It should expose:
 #   - "8080:8080"   # HTTP/REST (mobile clients)
